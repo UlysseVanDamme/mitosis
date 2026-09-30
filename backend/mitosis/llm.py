@@ -13,6 +13,7 @@ via output_config.format are used instead of forced tool use. Same guarantee
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import hashlib
 import json
 import logging
@@ -558,6 +559,8 @@ class RealLLM(FakeLLM):
 
 
 CACHE_DIR = Path(__file__).resolve().parents[1] / "state" / "llm_cache"
+# set per request (POST /api/query {"fresh": true}): skip cache reads so latency is measured uncached
+NO_CACHE: contextvars.ContextVar[bool] = contextvars.ContextVar("mitosis_no_cache", default=False)
 CLI_TIMEOUT = float(os.environ.get("MITOSIS_CLI_TIMEOUT", "60"))
 
 
@@ -581,7 +584,7 @@ class ClaudeCLILLM(RealLLM):
             args += ["--json-schema", json.dumps(schema)]
         key = hashlib.sha256(json.dumps([args[4], system, user, schema], sort_keys=True).encode()).hexdigest()
         cached = CACHE_DIR / f"{key}.json"
-        if cached.exists():
+        if cached.exists() and not NO_CACHE.get():
             return json.loads(cached.read_text())
         async with self.sem:
             proc = await asyncio.create_subprocess_exec(

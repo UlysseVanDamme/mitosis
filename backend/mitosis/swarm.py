@@ -29,7 +29,7 @@ CONFLICT_CONCURRENCY = 4
 SPLIT_MIN_MS = int(os.environ.get("MITOSIS_SPLIT_MIN_MS", "900"))
 # B1 budding: a doc whose best System 1 similarity to every child is below this floor (and that the LLM
 # says fits no child) grows a new child cell instead of being forced into the last one
-BUD_FLOOR = float(os.environ.get("MITOSIS_BUD_FLOOR", "0.05"))
+BUD_FLOOR = float(os.environ.get("MITOSIS_BUD_FLOOR", "0.25"))
 
 USERS = ["consultant", "client:Brouwerij Van Dessel", "public"]
 STAFF_ROLES = {"admin", "expert", "consultant"}
