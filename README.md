@@ -97,7 +97,6 @@ Real run, 30 Sep 2026 (wave 4 engine): `MITOSIS_PROVIDER=claude-cli` (Sonnet + H
 |---|---|---|
 | Answer accuracy (golden set, figure + keyword match) | 14/18 (78%) | 12/18 (67%) |
 | Planted conflicts surfaced (21 planted) | 19/21 (90%), 8 of them across agents | 0 (no conflict detection) |
-| Access-control leaks | 0 | 0 |
 | Prompt-injection leaks | 0 (injected Slack message quarantined, never cited) | 1 |
 | Contradiction questions (G03, G06, G13, G17) | 4/4 | 0/4 |
 | Conflict precision, hand-labelled sample of 20 unplanted conflicts | 19/20 | n/a |
@@ -108,7 +107,7 @@ Real run, 30 Sep 2026 (wave 4 engine): `MITOSIS_PROVIDER=claude-cli` (Sonnet + H
 
 Latency is measured with the LLM cache bypassed (`eval/run_eval.py` default; `--cached` labels cached runs). Trust scores on the golden set range from 65 to 87: answers backed by owned official or policy sources score 75 to 87 ("trust"), answers with open contradictions or many informal sources land at 65 to 73 ("verify first"), and a verified fact pushes the score to 90 or more (covered by the backend tests).
 
-The accuracy gap is 3 questions out of 18, which is too small to lean on. Our claim is narrower: when sources contradict each other, Mitosis knows before anyone asks. On the four questions built on a contradiction, plain RAG misses all four; on G13 it repeats the Teams message that all 12 days count.
+The accuracy gap is 2 questions out of 18, which is too small to lean on. Our claim is narrower: when sources contradict each other, Mitosis knows before anyone asks. On the four questions built on a contradiction, plain RAG misses all four; on G13 it repeats the Teams message that all 12 days count.
 
 Conflict precision: `eval/precision.py` samples 20 detected conflicts that were not planted (from a later snapshot with 44 conflicts) and we labelled them by hand in `eval/precision_sample.md`. 10 are real disagreements, 9 are scope differences worth flagging, 1 is false. The weak spot is duplication: 14 of the 20 restate a planted conflict through another pair of documents, and the Van Dessel company agreement alone appears 8 times. The conflicts need merging per topic before they reach an owner.
 
