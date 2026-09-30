@@ -27,7 +27,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .auth import DEMO_USERS, Auth, AuthError, RateLimited, RateLimiter, User
 from .events import STATE_DIR, EventHub, _jsonable
-from .llm import make_llm
+from .llm import NO_CACHE, make_llm
 from .swarm import Swarm, can_see, impact_summary, load_corpus
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -66,10 +66,12 @@ class IngestReq(_Req):
 
 class QueryReq(_Req):  # a body "user" field is ignored: access comes from the token
     question: str = Field(min_length=1, max_length=1000)
+    fresh: bool = False  # bypass the LLM response cache (eval: honest uncached latency)
 
 
 class BaselineReq(_Req):
     question: str = Field(min_length=1, max_length=1000)
+    fresh: bool = False
     query_id: Optional[str] = Field(default=None, pattern=QUERY_ID)
 
 
@@ -262,6 +264,8 @@ def filter_event(ev: dict, v: View, qowner: Callable[[str], Optional[str]]) -> O
     t = ev.get("type")
     if t in PUBLIC_EVENTS:
         return ev
+    if t in ("notification", "notification_delivered"):  # addressed: the recipient, plus the admin desk (stage mode)
+        return ev if ev.get("to") == v.user.username or v.user.role == "admin" else None
     replayed = bool(ev.get("replayed"))
     if replayed and not v.full:
         return None  # recordings are unfiltered history: only full-access users get them
@@ -278,6 +282,11 @@ def filter_event(ev: dict, v: View, qowner: Callable[[str], Optional[str]]) -> O
         return {**ev, "agent": v.agent(a)} if v.agent_ok(a) else None
     if t == "split_started":
         return ev  # agent id and token counts only
+    if t == "agent_budded":
+        a = _jsonable(ev.get("agent") or {})
+        if not v.agent_ok(a):
+            return None
+        return {**ev, "agent": v.agent(a), "split": v.split(_jsonable(ev.get("split") or {}), {a.get("agent_id")})}
     if t == "agent_split":
         parent = _jsonable(ev.get("parent") or {})
         if not v.agent_ok(parent):
@@ -287,7 +296,7 @@ def filter_event(ev: dict, v: View, qowner: Callable[[str], Optional[str]]) -> O
         p = v.agent(parent)
         p["children"] = [c for c in p.get("children") or [] if c in ok]
         return {**ev, "parent": p, "children": kids, "split": v.split(_jsonable(ev.get("split") or {}), ok)}
-    if t in ("conflict_detected", "conflict_verified"):
+    if t in ("conflict_detected", "conflict_verified", "conflict_updated"):
         c = _jsonable(ev.get("conflict") or {})
         f = _jsonable(ev.get("fact")) if ev.get("fact") else None
         return {**ev, "conflict": v.conflict(c)} if v.conflict_ok(c) and (f is None or v.fact_ok(f)) else None
@@ -555,7 +564,14 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
     @api.post("/query")
     async def query(req: QueryReq, user: User = Depends(current_user)):
         query_rl.check(user.username)
-        qid = sw().start_query(req.question, user.access)
+        if req.fresh:
+            token = NO_CACHE.set(True)  # the query task copies this context when it is created
+            try:
+                qid = sw().start_query(req.question, user.access, username=user.username)
+            finally:
+                NO_CACHE.reset(token)
+        else:
+            qid = sw().start_query(req.question, user.access, username=user.username)
         qowners[qid] = user.username
         return {"query_id": qid}
 
@@ -581,9 +597,13 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         s = sw()
         pool = list(s.docs.values()) or list(load_corpus(None)[0].values())
         docs = [d for d in pool if can_see(user.access, d.access_group)]  # access control before retrieval
-        res = fn(req.question, docs, s.llm)
-        if inspect.isawaitable(res):
-            res = await res
+        token = NO_CACHE.set(req.fresh)
+        try:
+            res = fn(req.question, docs, s.llm)
+            if inspect.isawaitable(res):
+                res = await res
+        finally:
+            NO_CACHE.reset(token)
         qid = req.query_id or ("B" + uuid.uuid4().hex[:8])
         qowners[qid] = user.username
         allowed = {d.doc_id for d in docs}
@@ -623,6 +643,16 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
             res = json.loads(v.redact(json.dumps(res)))
         res["user"] = user.display_name
         return res
+
+    # ---------------------------------------------------------------- wave 4: notifications + handover
+    @api.get("/notifications")
+    async def notifications(user: User = Depends(current_user)):
+        return {"notifications": sw().notifier.for_user(user.username)}
+
+    @api.get("/handover")
+    async def handover(user: User = Depends(require("consultant"))):
+        """H1: open/hero conflicts and impacts touching the caller's portfolio client, hero first, max 5."""
+        return _jsonable(sw().handover(user.access, user.username))
 
     # ---------------------------------------------------------------- write-back
     @api.post("/verify")

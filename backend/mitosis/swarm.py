@@ -14,6 +14,7 @@ from typing import Optional
 from . import tokens as tok
 from .events import STATE_DIR, EventHub
 from . import guard
+from .notify import NAMES, PORTFOLIO, Notifier, owner_user
 from .llm import DIM_LABEL, DIMENSIONS, FakeLLM, doc_dim_value, fake_split, norm, words
 from .models import Agent, AgentScope, Claim, ClaimScope, Conflict, Document, Split, VerifiedFact
 from .router import CLAIM_SIM, Q_MIN_SIM, Q_REL_MARGIN, Router, claim_text, doc_text, embed
@@ -26,6 +27,9 @@ EXTRACT_CONCURRENCY = 8
 CONFLICT_CONCURRENCY = 4
 # minimum time between split_started and agent_split so the UI "swell and pinch" animation can play
 SPLIT_MIN_MS = int(os.environ.get("MITOSIS_SPLIT_MIN_MS", "900"))
+# B1 budding: a doc whose best System 1 similarity to every child is below this floor (and that the LLM
+# says fits no child) grows a new child cell instead of being forced into the last one
+BUD_FLOOR = float(os.environ.get("MITOSIS_BUD_FLOOR", "0.25"))
 
 USERS = ["consultant", "client:Brouwerij Van Dessel", "public"]
 STAFF_ROLES = {"admin", "expert", "consultant"}
@@ -119,6 +123,8 @@ class Swarm:
         self.worker: Optional[asyncio.Task] = None
         self.extractions: dict[str, asyncio.Task] = {}
         self.bg: set[asyncio.Task] = set()
+        self.notifier = Notifier(self.hub, self.bg)
+        self._families: dict[tuple, str] = {}  # conflict family key -> conflict_id (dedupe)
         self._lock = asyncio.Lock()
         self._sem_x = asyncio.Semaphore(EXTRACT_CONCURRENCY)
         self._sem_c = asyncio.Semaphore(CONFLICT_CONCURRENCY)
@@ -337,8 +343,19 @@ class Swarm:
                 chosen = match
                 used.append(("rule", None))
             else:
-                cid, margin, _ = self.router.decide_doc(vec, [k.agent_id for k in kids]) if vec is not None else (None, 0.0, [])
-                if cid is not None:
+                cid, margin, ranked = self.router.decide_doc(vec, [k.agent_id for k in kids]) if vec is not None else (None, 0.0, [])
+                best = ranked[0][1] if ranked else 0.0
+                bud = None
+                if cid is None and vec is not None and best < BUD_FLOOR and not match:
+                    ids = await self.llm.route_doc(d, [{"agent_id": k.agent_id, "dimension": k.scope.dimension,
+                                                        "value": k.scope.value, "description": k.scope.description}
+                                                       for k in kids], allow_none=True)
+                    if not ids:
+                        bud = self._bud(node, d, dim, v, best)
+                if bud is not None:
+                    chosen = [bud]
+                    used.append(("s2", round(margin, 4)))
+                elif cid is not None:
                     chosen = [self.agents[cid]]
                     used.append(("s1", round(margin, 4)))
                 else:
@@ -354,6 +371,24 @@ class Swarm:
         router = max((u[0] for u in used), key=order.__getitem__, default="rule")
         margins = [m for r, m in used if r == router and m is not None]
         return path, leaves, {"router": router, "margin": min(margins) if margins else None, "hops": len(used)}
+
+    def _bud(self, node: Agent, d: Document, dim: str, v: str, best: float) -> Agent:
+        """B1: grow a new child for a topic no existing child covers."""
+        topic = (d.topic or d.title or v or "new topic")[:60]
+        child = Agent(agent_id=self._id("A"), parent_id=node.agent_id, depth=node.depth + 1,
+                      scope=AgentScope(dimension=dim, value=topic, description=f"New topic: {topic}",
+                                       values=[v] if v else []),
+                      budget=self.budget, owner=_named_owner([d], "Knowledge desk"), created_ts=time.time())
+        self.agents[child.agent_id] = child
+        node.children.append(child.agent_id)  # its centroid learns the doc via absorb on the routed path
+        origin = next((sp.split_id for sp in reversed(self.splits) if sp.parent_id == node.agent_id), "?")
+        split = Split(split_id=self._id("S"), parent_id=node.agent_id, dimension=dim,
+                      rule=f"budded from {origin}: new topic {topic} -> {child.agent_id}", children=[child.agent_id],
+                      reason=f"best similarity to existing children {best:.3f} < floor {BUD_FLOOR}; no child fits",
+                      tokens_before=node.tokens, ts=time.time(), kind="bud")
+        self.splits.append(split)
+        self.hub.publish("agent_budded", parent_id=node.agent_id, agent=child, split=split)
+        return child
 
     def _quarantine(self, d: Document) -> None:
         """Stored and visible (with a badge), but never routed into agent knowledge, never evidence."""
@@ -480,6 +515,9 @@ class Swarm:
         kind = f.get("kind") if f.get("kind") in ("temporal_supersession", "scope_difference", "true_contradiction",
                                                   "forecast_vs_final") else "true_contradiction"
         win = f.get("winning_claim_id") if f.get("winning_claim_id") in ids else None
+        dup = self._family_match(ids)
+        if dup is not None:
+            return self._merge_conflict(dup, ids)
         c = Conflict(conflict_id=self._id("K"), agent_id="", claim_ids=ids, kind=kind,
                      summary=str(f.get("summary", ""))[:400], resolution=str(f.get("resolution", ""))[:600],
                      winning_claim_id=win, status="open" if f.get("needs_human") or not win else "auto_resolved",
@@ -491,7 +529,100 @@ class Swarm:
         self._sync_inbox()
         if c.status != "open":
             self._detect_impact(c)
+        if c.hero:
+            self._notify_owner(c)
         return c
+
+    # ------------------------------------------------------------------ wave 4: dedupe + notifications
+    def _family(self, ids: list[str]) -> tuple[frozenset, set]:
+        vals = frozenset(_num(self.claims[i].value) for i in ids if i in self.claims)
+        facts = {(norm(self.claims[i].subject), norm(self.claims[i].attribute)) for i in ids if i in self.claims}
+        return vals, facts
+
+    def _family_match(self, ids: list[str]) -> Optional[Conflict]:
+        """One conflict per (subject, attribute, value pair) family: same set of values and a shared fact."""
+        vals, facts = self._family(ids)
+        subj = {f[0] for f in facts}
+        attr = {f[1] for f in facts}
+        for c in self.conflicts.values():
+            cv, cf = self._family(c.claim_ids)
+            if cv == vals and (cf & facts or ({f[0] for f in cf} & subj and {f[1] for f in cf} & attr)):
+                return c
+        return None
+
+    def _merge_conflict(self, c: Conflict, ids: list[str]) -> Optional[Conflict]:
+        new = [i for i in ids if i not in c.claim_ids]
+        if not new:
+            return None
+        c.claim_ids += new
+        c.claims += [self.claims[i] for i in new]
+        was_hero = c.hero
+        holder = self.agents.get(c.agent_id)
+        if holder is not None:  # keep the conflict where it is; the new sources join as context
+            have = {x.claim_id for x in holder.claims}
+            holder.claims += [self.claims[i].model_copy(update={"context": True}) for i in new if i not in have]
+        hs = self._holders()
+        c.agent_ids = list(dict.fromkeys([*c.agent_ids, *(hs[i] for i in new if i in hs)]))
+        self._enrich(c)
+        self.hub.publish("conflict_updated", conflict=c, agent_id=c.agent_id, merged=new)
+        self._sync_inbox()
+        if c.hero and not was_hero:
+            self._notify_owner(c)
+        return c
+
+    def _side_line(self, c: Conflict) -> str:
+        return " vs ".join(f"{s['value']} ({s['source'] or s['title']}, {s['date'] or 'undated'})" for s in c.sides[:3])
+
+    def _notify_owner(self, c: Conflict) -> None:
+        a = self.agents.get(c.agent_id)
+        pc = next((s["pc"] for s in c.sides if s.get("pc")), None)
+        to = owner_user(a.owner if a else None, pc)
+        self.notifier.send(to, "New conflict in your cell", f"{c.plain_summary}: {self._side_line(c)}",
+                           c.conflict_id, sides=c.sides)
+
+    def affects_client(self, c: Conflict, client: str) -> bool:
+        side_clients = {s.get("client") for s in c.sides if s.get("client")}
+        if client in side_clients or any(i.get("client") == client for i in c.impacts):
+            return True
+        if side_clients:
+            return False  # about another client's file
+        pcs = {d.pc for d in self.docs.values() if d.client == client and d.pc}
+        return bool({s.get("pc") for s in c.sides if s.get("pc")} & pcs)
+
+    def _notify_verified(self, c: Conflict, fact: VerifiedFact, by: str) -> None:
+        to: dict[str, Optional[str]] = {}
+        for q in list(self.queries.values()):
+            login = q.get("login")
+            if login and login not in to and any(x.get("conflict_id") == c.conflict_id for x in q.get("conflicts") or []):
+                to[login] = q["query_id"]
+        for login, client in PORTFOLIO.items():
+            if login not in to and self.affects_client(c, client):
+                to[login] = None
+        for login, qid in to.items():
+            if NAMES.get(login) == by:
+                continue  # the verifier does not notify themselves
+            client = PORTFOLIO.get(login)
+            short = client.replace("Brouwerij ", "") if client else ""
+            text = (f"Your {short + ' ' if short else ''}question is verified by {by}: {fact.statement}" if qid
+                    else f"{short or 'Your client'} update, verified by {by}: {fact.statement}")
+            self.notifier.send(login, "Answer verified", text, c.conflict_id, query_id=qid, sides=c.sides)
+
+    def handover(self, user, login: str) -> dict:
+        """H1: what a consultant should know about their portfolio client before asking anything."""
+        client = PORTFOLIO.get(login)
+        if not client:
+            return {"client": None, "items": []}
+        p = principal(user)
+        cs = [c for c in self.conflicts.values() if self._visible_conflict(c, p) and self.affects_client(c, client)]
+        cs.sort(key=lambda c: (not c.hero, c.status != "open", c.conflict_id))
+        items = []
+        for c in cs[:5]:
+            a = self.agents.get(c.agent_id)
+            v = self.conflict_view(c, p)
+            items.append({"conflict_id": c.conflict_id, "plain_summary": c.plain_summary, "sides": v["sides"],
+                          "impacts": v["impacts"], "owner": a.owner if a else None, "status": c.status,
+                          "hero": c.hero, "kind": c.kind})
+        return {"client": client, "items": items}
 
     # ------------------------------------------------------------------ wave 3: enrichment
     def _enrich(self, c: Conflict) -> None:
@@ -723,10 +854,13 @@ class Swarm:
         return all(can_see(user, self.docs[self.claims[i].doc_id].access_group)
                    for i in c.claim_ids if i in self.claims and self.claims[i].doc_id in self.docs)
 
-    def start_query(self, question: str, user="consultant") -> str:
+    def start_query(self, question: str, user="consultant", username: Optional[str] = None) -> str:
         p = principal(user)
+        if username:
+            p["login"] = username
         qid = "Q" + uuid.uuid4().hex[:8]
-        self.queries[qid] = {"query_id": qid, "question": question, "user": p["username"], "status": "running"}
+        self.queries[qid] = {"query_id": qid, "question": question, "user": p["username"], "status": "running",
+                             "login": p.get("login")}
         t = asyncio.create_task(self._run_query(qid, question, p))
         self.bg.add(t)
         t.add_done_callback(self.bg.discard)
@@ -876,7 +1010,7 @@ class Swarm:
         res = {"query_id": qid, "question": question, "user": user, "status": "done", "answer": answer,
                "citations": citations, "conflicts": conflicts, "trust": trust, "owners": owners, "leaves": leaf_ids,
                "path": path, "confidences": conf, "leaf_answers": leaf_answers, "facts": list(facts.values()),
-               "assessment": assessment, "router": route["router"]}
+               "assessment": assessment, "router": route["router"], "login": p.get("login")}
         self.queries[qid] = res
         self.hub.publish("query_answer", query_id=qid, answer=answer, citations=citations, conflicts=conflicts,
                          trust=trust, owners=owners, leaves=leaf_ids, facts=list(facts.values()), assessment=assessment)
@@ -1084,6 +1218,7 @@ class Swarm:
             self._emit_agent(self.agents[c.agent_id])
         self._sync_inbox()
         self._detect_impact(c)
+        self._notify_verified(c, fact, by)
         self.save_snapshot()
         return fact
 
@@ -1231,31 +1366,37 @@ def _num(v: str) -> str:
 
 def trust_breakdown(citations: list[dict], conflicts: list[dict], facts: list[dict], n_ownerless: int = 0,
                     n_offscope: int = 0, n_draft_issues: int = 0) -> tuple[int, list[dict]]:
-    """Wave-1 trust formula, itemised so the UI can show why."""
+    """Wave-4 calibration, itemised so the UI can show why. An owned official/policy source with no open
+    conflict lands in 75-95 (trust); verified facts push to 90+; an open true contradiction or only
+    informal/forecast support pulls the score below 50."""
     factors: list[dict] = []
 
     def add(label: str, delta: int) -> None:
         if delta:
             factors.append({"label": label, "delta": int(delta)})
 
-    add("verified facts", min(30, 15 * len(facts)))
     types = [c.get("source_type") for c in citations]
-    add("official/law/policy source", 10 if any(t in STRONG for t in types) else 0)
+    owned_strong = any(c.get("source_type") in STRONG and c.get("owner") for c in citations)
+    any_strong = any(t in STRONG for t in types)
+    add("official/policy source with an owner" if owned_strong else "official/policy source (no owner)",
+        27 if owned_strong else (15 if any_strong else 0))
+    add("verified by an expert", min(25, 15 * len(facts)))
     sources = {c.get("source") for c in citations}
-    add("independent sources agree", min(15, 5 * max(0, len(sources) - 1)))
-    open_n = sum(1 for c in conflicts if c.get("status") == "open")
-    auto_n = sum(1 for c in conflicts if c.get("status") == "auto_resolved")
-    add(f"{open_n} open conflict(s)", -min(40, 15 * open_n))
-    add(f"{auto_n} auto-resolved conflict(s)", -min(10, 5 * auto_n))
-    add("only forecast/chat support", -20 if types and all(t in WEAK for t in types) else 0)
-    add(f"{n_ownerless} ownerless source(s)", -min(10, 5 * n_ownerless))
-    add(f"{n_offscope} source(s) from another scope", -min(10, 5 * n_offscope))
-    add(f"{n_draft_issues} problem(s) in the draft answer", -min(40, 20 * n_draft_issues))
+    add("independent sources agree", min(10, 5 * max(0, len(sources) - 1)))
+    open_c = [c for c in conflicts if c.get("status") == "open"]
+    true_n = sum(1 for c in open_c if c.get("kind") == "true_contradiction")
+    other_n = len(open_c) - true_n
+    add(f"{true_n} open contradiction(s)", -min(50, 32 * true_n))
+    add(f"{other_n} open conflict(s) awaiting an owner", -min(30, 12 * other_n))
+    add("only informal support (forecast, chat, ticket)", -25 if types and all(t in WEAK | INFORMAL for t in types) else 0)
+    add(f"{n_ownerless} ownerless source(s)", -min(10, 4 * n_ownerless))
+    add(f"{n_offscope} source(s) from another scope", -min(10, 4 * n_offscope))
+    add(f"{n_draft_issues} problem(s) in the draft answer", -min(40, 25 * n_draft_issues))
     score = 50 + sum(f["delta"] for f in factors)
     if not citations:
         factors.append({"label": "no sources", "delta": min(score, 15) - score})
         score = min(score, 15)
-    return max(5, min(99, score)), factors
+    return max(5, min(97, score)), factors
 
 
 def trust_score(citations: list[dict], conflicts: list[dict], facts: list[dict]) -> int:
