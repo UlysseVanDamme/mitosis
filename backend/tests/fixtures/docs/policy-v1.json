@@ -1,0 +1,12 @@
+{
+ "doc_id": "policy-v1",
+ "title": "Internal policy v1: eco-cheques",
+ "source": "Internal policy",
+ "source_type": "policy",
+ "date": "2024-03-01",
+ "country": "BE",
+ "pc": "PC 200",
+ "topic": "eco-cheques",
+ "access_group": "internal",
+ "text": "Policy v1: the maximum eco-cheque amount for PC 200 is \u20ac250 per full-time employee per year."
+}
