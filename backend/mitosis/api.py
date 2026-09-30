@@ -71,6 +71,7 @@ class QueryReq(_Req):  # a body "user" field is ignored: access comes from the t
 
 class BaselineReq(_Req):
     question: str = Field(min_length=1, max_length=1000)
+    fresh: bool = False
     query_id: Optional[str] = Field(default=None, pattern=QUERY_ID)
 
 
@@ -575,9 +576,13 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         s = sw()
         pool = list(s.docs.values()) or list(load_corpus(None)[0].values())
         docs = [d for d in pool if can_see(user.access, d.access_group)]  # access control before retrieval
-        res = fn(req.question, docs, s.llm)
-        if inspect.isawaitable(res):
-            res = await res
+        token = NO_CACHE.set(req.fresh)
+        try:
+            res = fn(req.question, docs, s.llm)
+            if inspect.isawaitable(res):
+                res = await res
+        finally:
+            NO_CACHE.reset(token)
         qid = req.query_id or ("B" + uuid.uuid4().hex[:8])
         qowners[qid] = user.username
         allowed = {d.doc_id for d in docs}

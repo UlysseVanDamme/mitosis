@@ -1388,7 +1388,7 @@ def trust_breakdown(citations: list[dict], conflicts: list[dict], facts: list[di
     other_n = len(open_c) - true_n
     add(f"{true_n} open contradiction(s)", -min(50, 32 * true_n))
     add(f"{other_n} open conflict(s) awaiting an owner", -min(30, 12 * other_n))
-    add("only forecast/chat support", -25 if types and all(t in WEAK | INFORMAL for t in types) else 0)
+    add("only informal support (forecast, chat, ticket)", -25 if types and all(t in WEAK | INFORMAL for t in types) else 0)
     add(f"{n_ownerless} ownerless source(s)", -min(10, 4 * n_ownerless))
     add(f"{n_offscope} source(s) from another scope", -min(10, 4 * n_offscope))
     add(f"{n_draft_issues} problem(s) in the draft answer", -min(40, 25 * n_draft_issues))

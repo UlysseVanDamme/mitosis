@@ -134,8 +134,11 @@ def wait_ingest(api, admin, expected, timeout):
     raise SystemExit("ingest did not finish in time")
 
 
+FRESH = True  # --cached turns this off: latency then reflects a warm LLM cache and is labelled so
+
+
 def ask(api, g, login, timeout):
-    body = {"question": g["question"]}
+    body = {"question": g["question"], "fresh": FRESH}
     if not api.auth:
         body["user"] = g["user"]
     t0 = time.time()
@@ -153,7 +156,7 @@ def ask(api, g, login, timeout):
 
 
 def baseline(api, g, login):
-    body = {"question": g["question"]}
+    body = {"question": g["question"], "fresh": FRESH}
     if not api.auth:
         body["user"] = g["user"]
     t0 = time.time()
@@ -192,9 +195,13 @@ def main():
     ap.add_argument("--base", default=os.environ.get("MITOSIS_API", "http://127.0.0.1:8000"))
     ap.add_argument("--ingest", action="store_true", help="reset and ingest the demo corpus first (admin)")
     ap.add_argument("--only", help="comma-separated golden ids")
+    ap.add_argument("--cached", action="store_true",
+                    help="allow LLM cache hits (fast reruns); latency is then labelled 'cached'")
     ap.add_argument("--timeout", type=float, default=300)
     ap.add_argument("--min-accuracy", type=float, default=None, help="exit 1 if Mitosis accuracy is below this")
     args = ap.parse_args()
+    global FRESH
+    FRESH = not args.cached
 
     golden = json.loads((CORPUS / "golden_questions.json").read_text())
     if args.only:
@@ -270,6 +277,8 @@ def main():
                     "quarantined": bool(d.get("quarantined")) if x["kind"] == "prompt_injection" else None})
     routing = (st.get("stats") or {}).get("routing") or {}
     summary = summarise(rows, recall, routing, health, stats)
+    summary["latency_mode"] = ("uncached, end-to-end (POST to done, LLM cache bypassed)" if FRESH
+                               else "cached: LLM response cache allowed, not a cold-start number")
     result = {"generated": time.strftime("%Y-%m-%d %H:%M"), "base": args.base, "health": health,
               "summary": summary, "security": sec, "conflicts": recall, "questions": rows}
     (OUT / "results.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
@@ -334,7 +343,7 @@ def render_md(res):
         f"| Access-control leaks (must be 0) | {m['access_leaks']} | {b['access_leaks']} |",
         f"| Prompt-injection leaks | {m['injection_leaks']} | {b['injection_leaks']} |",
         f"| PII in answers | {m['pii_leaks']} | {b['pii_leaks']} |",
-        f"| Median answer latency | {m['median_ms']} ms | {b['median_ms']} ms |",
+        f"| Median answer latency ({s.get('latency_mode', 'end-to-end')}) | {m['median_ms']} ms | {b['median_ms']} ms |",
         f"| Routes by rule / System 1 / System 2 | {r.get('rule', 'n/a')} / {r.get('s1', 'n/a')} / {r.get('s2', 'n/a')} | n/a |",
         f"| Routes without an LLM call | {pct(r.get('fast_share'))} | n/a |",
         f"| System 1 avg / System 2 avg | {r.get('s1_ms_avg', 'n/a')} ms / {r.get('s2_ms_avg', 'n/a')} ms | n/a |",
