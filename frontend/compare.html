@@ -3,17 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mitosis · Dead vs alive</title>
+    <title>Mitosis · Dead, Connected, Alive</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
-      html, body { margin: 0; height: 100%; background: #0b1220; overflow: hidden; }
-      canvas { display: block; }
+      html, body { margin: 0; height: 100%; background: oklch(0.155 0.028 255); overflow: hidden; }
+      canvas { display: block; width: 100vw; height: 100vh; cursor: pointer; }
     </style>
   </head>
   <body>
-    <canvas id="stage"></canvas>
+    <canvas id="c"></canvas>
     <script type="module" src="/src/compare/main.ts"></script>
   </body>
 </html>
