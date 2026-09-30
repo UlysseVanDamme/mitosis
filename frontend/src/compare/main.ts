@@ -15,29 +15,37 @@ const TEND = A3OFF[A3.length - 1] + A3[A3.length - 1];
 const STEPS: Step[] = [
   { act: 0, dur: 5 },
   { act: 1, dur: 1 }, { act: 1, dur: 2.5 }, { act: 1, dur: 4.6 }, { act: 1, dur: 1.5 }, { act: 1, dur: 1.5 }, { act: 1, dur: 2 },
-  { act: 2, dur: 1.6 }, { act: 2, dur: 2 }, { act: 2, dur: 2 }, { act: 2, dur: 3.6 }, { act: 2, dur: 1.6 },
-  ...A3.map((dur) => ({ act: 3, dur })),
-  { act: 4, dur: 2.5 }, { act: 4, dur: 2 }, { act: 4, dur: 3 }, { act: 4, dur: 3.5 },
-  { act: 5, dur: 2 }, { act: 5, dur: 2.8 }, { act: 5, dur: 3 },
-  { act: 6, dur: 3 },
+  { act: 2, dur: 3 }, { act: 2, dur: 4.2 }, { act: 2, dur: 3 },
+  { act: 3, dur: 7 }, { act: 3, dur: 2.2 }, { act: 3, dur: 2.4 },
+  { act: 4, dur: 2.4 }, { act: 4, dur: 3 }, { act: 4, dur: 2.2 }, { act: 4, dur: 2.6 }, { act: 4, dur: 3.2 }, { act: 4, dur: 3 },
+  ...A3.map((dur) => ({ act: 5, dur })),
+  { act: 6, dur: 3.2 }, { act: 6, dur: 2 }, { act: 6, dur: 3 }, { act: 6, dur: 3.5 },
+  { act: 7, dur: 2 }, { act: 7, dur: 2.8 }, { act: 7, dur: 3 },
+  { act: 8, dur: 3 },
 ];
+const LAST_ACT = 8;
 const actStart = (a: number) => STEPS.findIndex((s) => s.act === a);
 const actEnd = (a: number) => STEPS.length - 1 - [...STEPS].reverse().findIndex((s) => s.act === a);
 
 const TITLES: Record<number, [string, string]> = {
   1: ['01 · DEAD DATA, ONE AGENT', 'Classic AI search'],
   2: ['02 · CONNECTED, STILL DEAD', 'Knowledge graph'],
-  3: ['03 · ALIVE', 'Mitosis grows itself'],
-  4: ['04 · ZOOM IN', 'Proactive conflict detection'],
-  5: ['05 · ASK', 'Routing a question'],
+  3: ['03 · WHY NOT ONE BIG AGENT?', 'Put everything in one agent'],
+  4: ['04 · MITOSIS, UP CLOSE', 'One cell becomes two'],
+  5: ['05 · ALIVE', 'Mitosis grows itself'],
+  6: ['06 · ZOOM IN', 'Proactive conflict detection'],
+  7: ['07 · ASK', 'Routing a question'],
 };
-const CAPTIONS: Record<number, string> = {
+/** one caption per act, or one per step */
+const CAPTIONS: Record<number, string | string[]> = {
   1: 'One agent visits dead documents, only when asked.',
-  2: 'Connected data is still dead. The agent still has to crawl it.',
-  3: 'Every document is absorbed by a living specialist. Too full? It divides.',
-  4: 'The specialist holds its whole domain, so contradictions surface on their own.',
-  5: 'Questions go straight to the specialists that know.',
-  6: 'Find it. Understand it. Trust it.',
+  2: 'A graph connects facts. It doesn’t check them.',
+  3: ['One agent can’t hold everything.', 'One agent can’t hold everything. The context window breaks.', 'So the cell divides before it bursts.'],
+  4: 'Divide by meaning, write down why, keep every domain in view.',
+  5: 'Every document is absorbed by a living specialist. Too full? It divides.',
+  6: 'The specialist holds its whole domain, so contradictions surface on their own.',
+  7: 'Questions go straight to the specialists that know.',
+  8: 'Find it. Understand it. Trust it.',
 };
 
 // ---------------------------------------------------------------- state
@@ -47,25 +55,19 @@ let step = 0;
 let stepStart = performance.now() / 1000;
 let now = stepStart;
 const jump = Number(params.get('act'));
-if (params.has('act') && jump >= 0 && jump <= 6) { step = actEnd(jump); stepStart -= 99; }
+if (params.has('act') && jump >= 0 && jump <= LAST_ACT) { step = actEnd(jump); stepStart -= 99; }
 // ?step=N&t=S freezes a mid-step frame (for screenshots)
 if (params.has('step')) { step = Number(params.get('step')); stepStart -= Number(params.get('t') ?? 99); }
 
 const cells = buildCells();
 const byId = (id: string) => cells.find((c) => c.id === id)!;
-const idx = (id: string) => cells.findIndex((c) => c.id === id);
 const edges = buildEdges(cells);
 const QX = 800, QY = 120;
 const IDLE: [number, number] = [800, 190]; // where the agent waits in acts 1-2
 const walkStart = cells.reduce((b, c, i) => (Math.hypot(c.x - QX, c.y - 250) < Math.hypot(cells[b].x - QX, cells[b].y - 250) ? i : b), 0);
 const walk = buildWalk(cells, edges, walkStart, 14);
-// the edge that breaks in act 2: Van Dessel CAO to its first neighbour
-const vdEdges = edges.map((e, i) => [i, e] as const).filter(([, [a, b]]) => a === idx('vd') || b === idx('vd'));
-const edgeLen = ([a, b]: [number, number]) => Math.hypot(cells[a].x - cells[b].x, cells[a].y - cells[b].y);
-const brokenEdge = vdEdges.sort((p, q) => edgeLen(q[1]) - edgeLen(p[1]))[0][0];
 const GRAB = ['f213', 'p1', 'pc124', 'nl'];
 const MISSED = ['f221', 'vd'];
-const NEWDOC = { lines: ['New document', 'Van Dessel HR memo'], x2: 1440, y2: 255 };
 const PHONE = { x: 1270, y: 430, w: 200, h: 340 };
 
 const nodes = buildColony();
@@ -210,20 +212,29 @@ function drawLegend(x: number, y: number, s = 1, a = 1) {
 // ---------------------------------------------------------------- tags
 type Target = string | [number, number] | (() => [number, number]);
 interface Tag { act: number; at: number; text: string; x: number; y: number; targets: Target[]; delay?: number }
-const edgeMid = (e: number): [number, number] => {
-  const [a, b] = edges[e];
-  return [(cells[a].x + cells[b].x) / 2, (cells[a].y + cells[b].y) / 2];
-};
+// act 2: a small, calm knowledge graph; two facts linked, never compared
+const KG: { x: number; y: number; label?: string }[] = [
+  { x: 610, y: 470, label: '2.13% · forecast' }, // 0
+  { x: 990, y: 470, label: '2.21% · final' }, // 1
+  { x: 800, y: 300, label: 'Van Dessel' }, // 2
+  { x: 420, y: 330, label: 'PC 200' }, // 3
+  { x: 1180, y: 320, label: 'Agoria' }, // 4
+  { x: 450, y: 640, label: 'Pro-Pay' }, // 5
+  { x: 800, y: 660 }, { x: 260, y: 500 }, { x: 1340, y: 520 }, { x: 1150, y: 670 }, { x: 600, y: 230 }, { x: 1010, y: 220 },
+];
+const KG_EDGES: [number, number][] = [[0, 1], [2, 0], [3, 2], [3, 0], [4, 1], [5, 0], [6, 0], [6, 1], [7, 3], [8, 4], [9, 1], [10, 3], [11, 4], [2, 11]];
+const KG_PATH: [number, number][] = [[800, 205], [800, 300], [610, 470], [990, 470], [800, 300], [800, 205]];
+const KG_MID: [number, number] = [800, 470];
+// act 3: the agent that tries to hold everything
+const BIG = { x: 860, y: 450 };
 const TAGS: Tag[] = [
   { act: 1, at: 1, text: 'Only when asked', x: 470, y: 190, targets: [[470, 120]] },
   { act: 1, at: 2, text: 'Picks similar, not true', x: 190, y: 420, targets: ['f213', 'p1'], delay: 4.3 },
   { act: 1, at: 3, text: 'Wrong context', x: 1090, y: 785, targets: ['nl', 'pc124'] },
   { act: 1, at: 4, text: 'Old looks like new', x: 430, y: 660, targets: ['p1'] },
   { act: 1, at: 5, text: 'One confident answer, no owner', x: 1300, y: 190, targets: [[1300, 150]], delay: 0.5 },
-  { act: 2, at: 1, text: 'Linked, never compared', x: 520, y: 178, targets: [edgeMid(edges.findIndex(([a, b]) => a + b === 1 && a * b === 0))] },
-  { act: 2, at: 2, text: 'Not in graph until rebuild', x: 1400, y: 175, targets: [[NEWDOC.x2, NEWDOC.y2]], delay: 1.2 },
-  { act: 2, at: 3, text: 'Many hops to search · 14', x: 1200, y: 120, targets: [], delay: 3 },
-  { act: 2, at: 4, text: 'Someone must maintain it', x: edgeMid(brokenEdge)[0] + 60, y: edgeMid(brokenEdge)[1] + 120, targets: [edgeMid(brokenEdge)], delay: 0.6 },
+  { act: 2, at: 2, text: 'Linked, never compared', x: 800, y: 580, targets: [KG_MID], delay: 0.8 },
+  { act: 3, at: 0, text: 'Starts forgetting the middle', x: 420, y: 250, targets: [[BIG.x - 120, BIG.y - 30]], delay: 4.4 },
 ];
 
 function drawTags() {
@@ -272,22 +283,6 @@ function drawCell(c: Cell, opts: { labels?: boolean; dim?: number } = {}) {
 }
 
 // ---------------------------------------------------------------- world objects
-const newdoc = { x: 0, y: 0, a: 0 };
-
-function drawNewDoc() {
-  if (newdoc.a <= 0) return;
-  ctx.save();
-  ctx.globalAlpha *= newdoc.a;
-  const r = 17;
-  ctx.beginPath(); ctx.arc(newdoc.x, newdoc.y, r + 8, 0, 7);
-  ctx.setLineDash([3, 5]); ctx.strokeStyle = GREY(0.6); ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
-  ctx.beginPath(); ctx.arc(newdoc.x, newdoc.y, r, 0, 7);
-  ctx.fillStyle = GREY(0.36); ctx.fill();
-  text(NEWDOC.lines[0], newdoc.x, newdoc.y + r + 16, 17, TEXT(0.8), 'center', 600);
-  text(NEWDOC.lines[1], newdoc.x, newdoc.y + r + 36, 15, TEXT2(0.7));
-  ctx.restore();
-}
-
 function drawQuestion(a: number, x = QX, y = QY) {
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha *= a;
@@ -298,8 +293,7 @@ function drawQuestion(a: number, x = QX, y = QY) {
   ctx.restore();
 }
 
-function drawClock(ticking: boolean) {
-  const x = 470, y = 120;
+function drawClock(ticking: boolean, x = 470, y = 120) {
   ctx.save();
   ctx.beginPath(); ctx.arc(x, y, 22, 0, 7);
   ctx.strokeStyle = GREY(0.62); ctx.lineWidth = 2.5; ctx.stroke();
@@ -317,20 +311,22 @@ function drawClock(ticking: boolean) {
   ctx.restore();
 }
 
-function answerCard(x: number, y: number, s: string, ok: boolean, a: number, size = 24) {
+function answerCard(x: number, y: number, s: string, ok: boolean | 'unsure', a: number, size = 24) {
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha *= a;
   const w = measure(s, size, 600) + 90;
-  const hue = ok ? 150 : 25;
-  pill(x, y, w, 56, oklch(0.21, 0.04, hue, 0.96), ok ? GREEN(0.8) : RED(0.8), 2);
+  const hue = ok === 'unsure' ? 75 : ok ? 150 : 25;
+  const col = ok === 'unsure' ? oklch(0.82, 0.14, 75) : ok ? GREEN() : RED();
+  pill(x, y, w, 56, oklch(0.21, 0.04, hue, 0.96), ok === true ? GREEN(0.8) : ok === 'unsure' ? oklch(0.82, 0.14, 75, 0.8) : RED(0.8), 2);
   const ix = x - w / 2 + 32;
-  ctx.beginPath(); ctx.arc(ix, y, 13, 0, 7); ctx.fillStyle = ok ? GREEN() : RED(); ctx.fill();
+  ctx.beginPath(); ctx.arc(ix, y, 13, 0, 7); ctx.fillStyle = col; ctx.fill();
   ctx.strokeStyle = oklch(0.18, 0.03, hue); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath();
-  if (ok) { ctx.moveTo(ix - 6, y); ctx.lineTo(ix - 1, y + 5); ctx.lineTo(ix + 7, y - 5); }
+  if (ok === 'unsure') text('?', ix, y + 1, 20, oklch(0.18, 0.03, hue), 'center', 700);
+  else if (ok) { ctx.moveTo(ix - 6, y); ctx.lineTo(ix - 1, y + 5); ctx.lineTo(ix + 7, y - 5); }
   else { ctx.moveTo(ix - 5, y - 5); ctx.lineTo(ix + 5, y + 5); ctx.moveTo(ix + 5, y - 5); ctx.lineTo(ix - 5, y + 5); }
   ctx.stroke();
   text(s, ix + 24, y + 1, size, TEXT(), 'left', 600);
-  if (!ok) { // crossed out
+  if (ok === false) { // crossed out
     ctx.beginPath(); ctx.moveTo(ix + 22, y + 1); ctx.lineTo(ix + 26 + measure(s, size, 600), y + 1);
     ctx.strokeStyle = RED(0.9); ctx.lineWidth = 2.5; ctx.stroke();
   }
@@ -365,21 +361,6 @@ function drawEdges(alpha: number, highlight?: Set<number>) {
   if (alpha <= 0) return;
   edges.forEach(([a, b], e) => {
     const A = cells[a], B = cells[b];
-    if (e === brokenEdge && cur.act === 2 && li >= 4) {
-      const p = ph(4, 0.1, 0.7, easeOut);
-      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
-      const gap = 0.12 + 0.18 * p;
-      ctx.strokeStyle = p < 1 && Math.sin(t * 40) > 0 && li === 4 ? RED(0.9) : GREY(0.5, 0.6 * alpha);
-      ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(lerp(A.x, mx, 1 - gap), lerp(A.y, my, 1 - gap) + 10 * p); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(B.x, B.y); ctx.lineTo(lerp(B.x, mx, 1 - gap), lerp(B.y, my, 1 - gap) - 10 * p); ctx.stroke();
-      [[A, 10], [B, -10]].forEach(([C, dy]) => {
-        const c = C as Cell;
-        ctx.beginPath(); ctx.arc(lerp(c.x, mx, 1 - gap), lerp(c.y, my, 1 - gap) + (dy as number) * p, 4, 0, 7);
-        ctx.fillStyle = RED(0.9 * p * alpha); ctx.fill();
-      });
-      return;
-    }
     ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
     ctx.strokeStyle = highlight?.has(e) ? oklch(0.8, 0.1, AGENT_HUE, 0.8 * alpha) : GREY(0.5, 0.55 * alpha);
     ctx.lineWidth = highlight?.has(e) ? 2.5 : 1.3; ctx.stroke();
@@ -441,51 +422,275 @@ function act1() {
   answerCard(1300, QY, '2.13% from 1 January', false, ph(5, 0, 0.5));
 }
 
+// act 2: one question, one short crawl, two linked facts it cannot choose between
+const kgLens = KG_PATH.slice(1).map((p, i) => Math.hypot(p[0] - KG_PATH[i][0], p[1] - KG_PATH[i][1]));
+const kgTotal = kgLens.reduce((a, b) => a + b, 0);
+const kgTouch = (k: number) => kgLens.slice(0, k).reduce((a, b) => a + b, 0) / kgTotal; // fraction at path point k
+const CRAWL = 3.0;
 function act2() {
-  cells.forEach((c) => { c.px = c.x; c.py = c.y; });
-  const ea = ph(0, 0.1, 1.2);
-  const walkN = li > 3 ? walk.length - 1 : li < 3 ? 0 : clamp(Math.floor((t - 0.5) / 0.2) + 1, 0, walk.length - 1);
-  const hl = new Set<number>();
-  for (let k = 0; k < walkN; k++) {
-    const a = walk[k], b = walk[k + 1];
-    hl.add(edges.findIndex(([p, q]) => (p === a && q === b) || (p === b && q === a)));
-  }
-  drawEdges(ea, li >= 3 ? hl : undefined);
-  // linked, never compared: the edge glows red, both cells stay dead
-  const cmp = edges.findIndex(([a, b]) => (a === 0 && b === 1) || (a === 1 && b === 0));
-  const ga = ph(1, 0, 0.6);
-  const [ea0, eb0] = edges[cmp], EA = cells[ea0], EB = cells[eb0];
-  if (ga > 0) {
-    ctx.save();
-    ctx.shadowColor = RED(0.8); ctx.shadowBlur = 14;
-    ctx.beginPath(); ctx.moveTo(EA.x, EA.y); ctx.lineTo(EB.x, EB.y);
-    ctx.strokeStyle = RED((0.55 + 0.3 * Math.sin(now * 3)) * ga * (li === 1 ? 1 : 0.6)); ctx.lineWidth = 3; ctx.stroke();
+  const ga = ph(0, 0, 1.0);
+  const bad = ph(2, 0.3, 0.6);
+  ctx.save(); ctx.globalAlpha *= ga;
+  KG_EDGES.forEach(([a, b], e) => {
+    const A = KG[a], B = KG[b];
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
+    if (e === 0) {
+      ctx.save();
+      if (bad > 0) { ctx.shadowColor = RED(0.9); ctx.shadowBlur = 18 * bad; }
+      ctx.strokeStyle = bad > 0 ? RED(0.6 + 0.35 * bad * (0.7 + 0.3 * Math.sin(now * 4))) : TEXT2(0.75);
+      ctx.lineWidth = 3 + 2 * bad; ctx.stroke(); ctx.restore();
+    } else { ctx.strokeStyle = GREY(0.5, 0.6); ctx.lineWidth = 1.5; ctx.stroke(); }
+  });
+  text('same topic: PC 200 index Jan 2026', KG_MID[0], KG_MID[1] - 22, 19, bad > 0 ? oklch(0.9, 0.08, 25) : TEXT2(0.9), 'center', 600, MONO, true);
+  const f = li === 1 ? clamp((t - 0.6) / CRAWL) : li > 1 ? 1 : 0;
+  KG.forEach((n, i) => {
+    const big = i < 2;
+    ctx.beginPath(); ctx.arc(n.x, n.y, big ? 20 : n.label ? 14 : 10, 0, 7);
+    ctx.fillStyle = GREY(0.36); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = GREY(0.5); ctx.stroke();
+    if (n.label) text(n.label, n.x, n.y + (big ? 46 : 34), big ? 24 : 18, big ? TEXT(0.85) : TEXT2(0.6), 'center', 600, SANS, true);
+    if (big && f >= kgTouch(2 + i)) {
+      ctx.beginPath(); ctx.arc(n.x, n.y, 28, 0, 7);
+      ctx.strokeStyle = oklch(0.85, 0.12, AGENT_HUE, 0.8); ctx.lineWidth = 2.5; ctx.stroke();
+    }
+  });
+  ctx.restore();
+  // time passes; nothing happens
+  if (li === 0) {
+    const ca = ph(0, 0.4, 0.5);
+    ctx.save(); ctx.globalAlpha *= ca;
+    drawClock(true, 1340, 150);
+    text('time passes · nothing is compared', 1340, 200, 18, TEXT2(0.8), 'center', 500, MONO);
     ctx.restore();
   }
-  cells.forEach((c) => drawCell(c));
-  // new document drifts in and stays unconnected
-  const np = ph(2, 0, 1.4, easeOut);
-  newdoc.x = lerp(1680, NEWDOC.x2, np); newdoc.y = NEWDOC.y2; newdoc.a = np > 0 ? 1 : 0;
-  drawNewDoc();
-  drawQuestion(li === 3 ? ph(3, 0, 0.4) : 0);
-  // the single living agent crawls the dead graph
-  let ax = IDLE[0], ay = IDLE[1], hop = -1;
-  if (li === 1) {
-    const p = (Math.sin(now * 1.2) + 1) / 2;
-    ax = lerp(EA.x, EB.x, p); ay = lerp(EA.y, EB.y, p);
-  } else if (li === 3 && t > 0.5) {
-    const k = Math.min(walk.length - 2, Math.floor((t - 0.5) / 0.2));
-    const p = easeOut((t - 0.5 - k * 0.2) / 0.18);
-    const A = cells[walk[k]], B = cells[walk[k + 1]];
-    ax = lerp(A.x, B.x, p); ay = lerp(A.y, B.y, p); hop = k;
-  } else if (li >= 4 || (li === 3 && t > 0.5)) {
-    const E = cells[walk[walk.length - 1]]; ax = E.x; ay = E.y;
-  }
-  drawAgent(ax, ay, ph(0, 0.4, 0.6));
-  if (hop >= 0) text(`hop ${Math.min(14, hop + 1)}`, ax + 28, ay - 26, 17, TEXT(0.9), 'left', 600, MONO, true);
+  drawQuestion(li === 1 ? ph(1, 0, 0.4) : 0);
+  const [ax, ay] = li === 1 && t > 0.6 ? along(KG_PATH, ease(f)) : [800, 205];
+  drawAgent(ax, ay, ga);
+  // it carries both facts back
+  const carry = [0, 1].filter((i) => f >= kgTouch(2 + i));
+  carry.forEach((i) => {
+    const ox = ax + (i ? 34 : -34), oy = ay + 34;
+    ctx.beginPath(); ctx.arc(ox, oy, 9, 0, 7); ctx.fillStyle = GREY(0.5); ctx.fill();
+    text(i ? '2.21%' : '2.13%', ox, oy + 22, 16, TEXT(0.85), 'center', 600, MONO, true);
+  });
+  answerCard(800, QY, '2.13% or 2.21%?  Both linked. Can’t tell.', 'unsure', ph(2, 0, 0.5));
 }
 
-// ---------------------------------------------------------------- the colony (acts 3-6)
+// ---------------------------------------------------------------- context gauge
+function gaugeColor(f: number, a = 1) {
+  return f > 1 ? RED(a) : f > 0.8 ? oklch(0.8, 0.15, lerp(85, 40, (f - 0.8) / 0.2), a) : GREEN(a);
+}
+function drawGauge(x: number, y: number, r: number, f: number, a = 1, lw = 9) {
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha *= a;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.strokeStyle = GREY(0.3, 0.8); ctx.lineWidth = lw; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp(f));
+  ctx.strokeStyle = gaugeColor(f); ctx.lineWidth = lw; ctx.lineCap = 'round';
+  if (f > 1) { ctx.shadowColor = RED(); ctx.shadowBlur = 20; }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- act 3: one big agent bursts
+const SPAWN = 0.045, FLY = 0.9, FILL_END = 6.4;
+const bigFill = (tt: number) => clamp((tt - 0.4) / (FILL_END - 0.4)) * 1.14;
+const bigR = (f: number) => 70 + 170 * easeOut(Math.min(f, 1)) + 25 * Math.max(0, f - 1) / 0.14;
+function act3() {
+  const tt = li === 0 ? t : 99; // fill time
+  const bt = li === 1 ? t : li === 2 ? t + 2.2 : -1; // time since the burst
+  const f = bigFill(Math.min(tt, FILL_END + FLY));
+  const r = bigR(f);
+  const hue = lerp(AGENT_HUE, 25, clamp((f - 0.85) / 0.25));
+  // dead data streams in from the left
+  const nIn: [number, number, number][] = []; // facts inside: local x, y, index
+  const nSp = Math.floor(Math.min(tt, FILL_END) / SPAWN);
+  for (let i = 0; i <= nSp; i++) {
+    const s = i * SPAWN, p = (tt - s) / FLY;
+    const sy = BIG.y + (hash(i, 3) - 0.5) * 620;
+    if (p < 1) {
+      if (bt >= 0) continue;
+      const q = ease(p);
+      ctx.beginPath(); ctx.arc(lerp(-20, BIG.x - r * 0.8, q), lerp(sy, BIG.y + (sy - BIG.y) * 0.2, q), 5, 0, 7);
+      ctx.fillStyle = GREY(0.55); ctx.fill();
+    } else {
+      const th = hash(i, 4) * Math.PI * 2, rr = Math.sqrt(hash(i, 5)) * 0.82;
+      nIn.push([Math.cos(th) * rr, Math.sin(th) * rr, i]);
+    }
+  }
+  const n = nIn.length;
+  const over = clamp((f - 0.72) / 0.35); // crowding: the middle fades, old facts leak out the back
+  if (bt < 0) {
+    ctx.save();
+    const wob = 1 + over * 0.05 * Math.sin(now * 9);
+    ctx.translate(BIG.x, BIG.y); ctx.scale(1 + over * 0.12 * wob, 1 - over * 0.05);
+    drawLiving(0, 0, r, hue, { lw: lerp(3, 0.7, clamp(f)), glow: 1 + over, phase: 0.3 });
+    ctx.restore();
+    nIn.forEach(([lx, ly, i], k) => {
+      const age = k / Math.max(1, n);
+      const mid = age > 0.25 && age < 0.7 ? over : 0;
+      const leak = age < 0.3 && hash(i, 6) < 0.5 ? over : 0;
+      const x = BIG.x + lx * r - leak * (r * 0.9 + hash(i, 7) * 260), y = BIG.y + ly * r * 0.95 + leak * 20 * Math.sin(i);
+      ctx.beginPath(); ctx.arc(x, y, 3.2, 0, 7);
+      ctx.fillStyle = leak > 0.5 ? GREY(0.55, 1 - leak * 0.6) : oklch(0.93, 0.12, hue, (1 - 0.8 * mid) * (1 - 0.5 * leak));
+      ctx.fill();
+    });
+    drawGauge(BIG.x, BIG.y, r * (1 + over * 0.12) + 26, f, ph(0, 0.2, 0.5), 11);
+    const pct = Math.round(f * 100);
+    ctx.save(); ctx.globalAlpha *= ph(0, 0.2, 0.5);
+    text(`context window  ${pct}%`, BIG.x, BIG.y - r - 72, 28, f > 1 ? RED() : TEXT(0.95), 'center', 700, MONO, true);
+    ctx.restore();
+    counter(1540, 58, n, 'documents in one context');
+    return;
+  }
+  // the burst: membrane fragments, a shockwave, the facts are dead again
+  const R0 = bigR(1.14) + 10;
+  const fl = clamp(1 - bt / 0.25);
+  if (fl > 0) { ctx.fillStyle = oklch(0.9, 0.08, 25, 0.35 * fl); ctx.fillRect(0, 0, W, H); }
+  for (let w = 0; w < 2; w++) {
+    const sw = clamp((bt - w * 0.15) / 1.1);
+    if (sw > 0 && sw < 1) {
+      ctx.beginPath(); ctx.arc(BIG.x, BIG.y, R0 + easeOut(sw) * 700, 0, 7);
+      ctx.strokeStyle = RED(0.7 * (1 - sw)); ctx.lineWidth = 6 * (1 - sw) + 1; ctx.stroke();
+    }
+  }
+  const e = easeOut(bt / 1.6);
+  for (let k = 0; k < 36; k++) {
+    const th = (k / 36) * Math.PI * 2 + hash(k, 9) * 0.1;
+    const d = R0 + e * (160 + hash(k, 10) * 320);
+    const a = clamp(1 - bt / 1.8);
+    if (a <= 0) break;
+    ctx.save(); ctx.translate(BIG.x + Math.cos(th) * d * 1.1, BIG.y + Math.sin(th) * d * 0.9); ctx.rotate(th + bt * (hash(k, 11) - 0.5) * 6);
+    ctx.beginPath(); ctx.arc(-R0, 0, R0, -0.09, 0.09);
+    ctx.strokeStyle = oklch(0.8, 0.14, 25, a); ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+  }
+  nIn.forEach(([lx, ly, i]) => {
+    const d = 0.3 + hash(i, 12) * 1.1;
+    const x = BIG.x + lx * R0 * (1 + e * d * 1.6), y = BIG.y + ly * R0 * (1 + e * d);
+    const lit = clamp(1 - bt / 0.9);
+    ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7);
+    ctx.fillStyle = lit > 0 ? oklch(lerp(0.55, 0.9, lit), lerp(0.012, 0.12, lit), 25) : GREY(0.5); ctx.fill();
+  });
+  text('context window  overflow', BIG.x, 150, 28, RED(clamp(1 - (bt - 2.5) / 0.6) * 0.95), 'center', 700, MONO, true);
+}
+
+// ---------------------------------------------------------------- act 4: mitosis up close, 1 -> 2
+const M = { x: 800, y: 430 }, MR = 165;
+const DAUGHTER_X = 330;
+const MFACTS = Array.from({ length: 28 }, (_, i) => {
+  const pc = i < 15;
+  const th = hash(i, 21) * Math.PI * 2, rr = Math.sqrt(hash(i, 22)) * 0.7 * MR;
+  const ph2 = hash(i, 23) * Math.PI * 2, r2 = Math.sqrt(hash(i, 24)) * 0.36 * MR;
+  return { pc, x: Math.cos(th) * rr, y: Math.sin(th) * rr, lx: Math.cos(ph2) * r2, ly: Math.sin(ph2) * r2 };
+});
+const HUE_PC = 178, HUE_OT = 300;
+const DIMS: [string, string, boolean][] = [['country', '27 | 1', false], ['client', '22 | 6', false], ['joint committee', '15 | 13', true]];
+const STEP4 = ['1 · over budget', '2 · choose a dimension', '3 · sort facts to the poles', '4 · divide', '5 · write down why', '6 · route new data'];
+const SPLIT_ROW = 'S1 · split on joint committee · PC 200 | other · reason: over budget (1,952 > 1,800 tokens)';
+function act4() {
+  const ca = ph(0, 0, 0.7);
+  const sort = ph(2, 0, 1.6);
+  const q = li === 3 ? ease(t / 1.1) : li > 3 ? 1 : 0;
+  const m = li === 3 ? ease((t - 1.1) / 1.3) : li > 3 ? 1 : 0;
+  const side = (pc: boolean) => (pc ? -1 : 1);
+  const centre = (pc: boolean) => M.x + side(pc) * lerp(0.5 * MR * (1 + 0.6 * q), DAUGHTER_X, m);
+  const dr = lerp(MR * 0.82, 140, m);
+  ctx.save(); ctx.globalAlpha *= ca;
+  text(STEP4[li], M.x, 142, 26, oklch(0.88, 0.12, AGENT_HUE), 'center', 700, MONO, true);
+  // membranes and gauges
+  const routed = li === 5 ? ph(5, 2.0, 0.4) : 0;
+  if (m <= 0) {
+    drawLiving(M.x, M.y, MR, AGENT_HUE, { q, ux: 1, uy: 0, lw: 2.5, nucleus: false });
+    drawGauge(M.x, M.y, MR + 30, 0.95, 1 - q, 10);
+    ctx.save(); ctx.globalAlpha *= 1 - q;
+    text('context window  95%', M.x, M.y - MR - 58, 24, TEXT(0.95), 'center', 700, MONO, true);
+    text('budget 1,800 tokens', M.x, M.y + MR + 60, 22, TEXT2(0.9), 'center', 600, MONO, true);
+    ctx.restore();
+  } else {
+    [true, false].forEach((pc) => {
+      const x = centre(pc), hue = pc ? HUE_PC : HUE_OT;
+      drawLiving(x, M.y, dr, hue, { lw: 2.5, nucleus: false, phase: pc ? 0 : 2 });
+      const g = (pc ? 0.52 : 0.47) + (pc ? 0.03 * routed : 0);
+      drawGauge(x, M.y, dr + 24, g, clamp((m - 0.4) / 0.4), 9);
+      ctx.save(); ctx.globalAlpha *= clamp((m - 0.4) / 0.4);
+      text(`${Math.round(g * 100)}%`, x + side(pc) * (dr + 62), M.y, 24, TEXT(0.95), 'center', 700, MONO, true);
+      text(pc ? 'PC 200' : 'other joint committees', x, M.y - dr - 58, 26, oklch(0.88, 0.12, hue), 'center', 700, MONO, true);
+      ctx.restore();
+    });
+  }
+  // facts, coloured by joint committee, sorted to the poles like chromosomes
+  if (sort > 0 && m <= 0) {
+    ctx.save(); ctx.setLineDash([4, 6]);
+    ctx.beginPath(); ctx.moveTo(centre(true), M.y); ctx.lineTo(centre(false), M.y);
+    ctx.strokeStyle = TEXT2(0.3 * sort * (1 - q)); ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+  }
+  MFACTS.forEach((fa) => {
+    const tx = centre(fa.pc) + fa.lx, ty = M.y + fa.ly;
+    const x = lerp(M.x + fa.x, tx, sort), y = lerp(M.y + fa.y, ty, sort);
+    ctx.save(); ctx.shadowColor = oklch(0.85, 0.14, fa.pc ? HUE_PC : HUE_OT, 0.8); ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fillStyle = oklch(0.9, 0.13, fa.pc ? HUE_PC : HUE_OT); ctx.fill(); ctx.restore();
+  });
+  // fact legend
+  if (li <= 2) {
+    [[HUE_PC, 'PC 200 facts'], [HUE_OT, 'other PC facts']].forEach(([h, s], k) => {
+      ctx.beginPath(); ctx.arc(1180, 300 + k * 36, 7, 0, 7); ctx.fillStyle = oklch(0.9, 0.13, h as number); ctx.fill();
+      text(s as string, 1198, 301 + k * 36, 20, TEXT2(0.9), 'left', 500, MONO);
+    });
+  }
+  // step 2: candidate dimensions, scored by how evenly they split the facts
+  if (li >= 1 && li <= 2) {
+    const settle = li > 1 || t > 2.1;
+    const hi = settle ? 2 : Math.floor(t / 0.5) % 3;
+    text('split on?', 1180, 410, 22, TEXT(0.9), 'left', 700, MONO);
+    DIMS.forEach(([d, sc, good], k) => {
+      const y = 456 + k * 44, on = k === hi;
+      if (on) pill(1290, y, 250, 38, settle && good ? oklch(0.24, 0.06, 150, 0.95) : oklch(0.25, 0.03, 255, 0.95), settle && good ? GREEN(0.9) : TEXT2(0.5), 2);
+      text(d, 1176, y + 1, 20, on ? TEXT() : TEXT2(0.6), 'left', 600, MONO);
+      text(sc, 1400, y + 1, 18, on ? (good ? GREEN() : RED(0.9)) : TEXT2(0.45), 'right', 600, MONO);
+    });
+    if (settle) text('balanced, by meaning  ✓', 1176, 600, 18, GREEN(0.9), 'left', 600, MONO);
+  }
+  // step 5: the split table writes itself
+  if (li >= 4) {
+    const n = li > 4 ? SPLIT_ROW.length : Math.floor(clamp((t - 0.2) / 2.4) * SPLIT_ROW.length);
+    const y = 720;
+    ctx.beginPath(); ctx.roundRect(150, y - 50, 1300, 92, 12);
+    ctx.fillStyle = oklch(0.18, 0.03, 255, 0.95); ctx.fill(); ctx.strokeStyle = TEXT2(0.25); ctx.lineWidth = 1.5; ctx.stroke();
+    text('split table', 176, y - 28, 16, TEXT2(0.7), 'left', 600, MONO);
+    text(SPLIT_ROW.slice(0, n) + (n < SPLIT_ROW.length && Math.sin(now * 12) > 0 ? '▍' : ''), 176, y + 10, 22, TEXT(), 'left', 600, MONO);
+  }
+  // step 6: a new dead document is routed at the fork
+  if (li === 5) {
+    const ra = ph(5, 0, 0.5);
+    const fork: [number, number] = [M.x, M.y];
+    ctx.save(); ctx.globalAlpha *= ra;
+    ctx.beginPath(); ctx.moveTo(fork[0], fork[1] - 14); ctx.lineTo(fork[0] + 14, fork[1]); ctx.lineTo(fork[0], fork[1] + 14); ctx.lineTo(fork[0] - 14, fork[1]); ctx.closePath();
+    ctx.fillStyle = oklch(0.3, 0.04, 255); ctx.fill(); ctx.strokeStyle = TEXT2(0.8); ctx.lineWidth = 2; ctx.stroke();
+    text('router', fork[0], fork[1] + 34, 18, TEXT2(0.9), 'center', 600, MONO, true);
+    const dec = ph(5, 1.1, 0.3);
+    [-1, 1].forEach((s) => {
+      const on = s < 0 && dec > 0;
+      ctx.beginPath(); ctx.moveTo(fork[0] + s * 22, fork[1]); ctx.lineTo(fork[0] + s * 70, fork[1]);
+      ctx.strokeStyle = on ? GREEN(0.95) : GREY(0.5); ctx.lineWidth = on ? 4 : 2; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(fork[0] + s * 78, fork[1]); ctx.lineTo(fork[0] + s * 66, fork[1] - 7); ctx.lineTo(fork[0] + s * 66, fork[1] + 7); ctx.closePath();
+      ctx.fillStyle = on ? GREEN(0.95) : GREY(0.5); ctx.fill();
+    });
+    ctx.restore();
+    const p1 = ph(5, 0.2, 0.9), p2 = ph(5, 1.3, 0.8);
+    if (p2 < 1) {
+      const x = p1 < 1 ? M.x : lerp(M.x, centre(true), p2), y = p1 < 1 ? lerp(215, M.y - 30, p1) : lerp(M.y - 30, M.y - 20, p2);
+      ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.fillStyle = GREY(0.55); ctx.fill();
+      text('PC 200 index · Feb', x + 18, y - 16, 19, TEXT(0.9), 'left', 600, MONO, true);
+    }
+    if (dec > 0) text('joint committee = PC 200  →  left', M.x, M.y + 80, 20, GREEN(0.95 * dec), 'center', 600, MONO, true);
+    const fl = ph(5, 2.1, 0.6, easeOut);
+    if (fl > 0 && fl < 1) {
+      ctx.beginPath(); ctx.arc(centre(true), M.y, dr * (1 + 0.3 * fl), 0, 7); ctx.strokeStyle = oklch(0.9, 0.12, HUE_PC, 1 - fl); ctx.lineWidth = 3; ctx.stroke();
+    }
+    if (p2 >= 1) { ctx.beginPath(); ctx.arc(centre(true) - 40, M.y - 20, 6, 0, 7); ctx.fillStyle = oklch(0.95, 0.13, HUE_PC); ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- the colony (acts 5-8)
 const pos = nodes.map(() => [0, 0] as [number, number]);
 const rad = nodes.map(() => 0);
 const axis = nodes.map((n) => {
@@ -494,22 +699,44 @@ const axis = nodes.map((n) => {
   const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
   return [(b.x - a.x) / d, (b.y - a.y) / d];
 });
-const endR = (n: Node) => BASE_R[n.level] * (n.kids.length ? 1.25 : 1.05);
+// for a 3- or 4-way split: the direction of each lobe, from the mother to each daughter
+const lobes = nodes.map((n) => n.kids.map((k) => {
+  const d = Math.hypot(nodes[k].x - n.x, nodes[k].y - n.y) || 1;
+  return [(nodes[k].x - n.x) / d, (nodes[k].y - n.y) / d] as [number, number];
+}));
+const endR = (n: Node) => BASE_R[n.level] * n.sz * (n.kids.length ? 1.25 : 1.05);
 
 function layout(T: number) {
   nodes.forEach((n) => {
-    const own = n.kids.length
-      ? BASE_R[n.level] * (0.8 + 0.45 * clamp((T - n.born) / (n.dv - n.born)))
-      : BASE_R[n.level] * (0.8 + 0.25 * easeOut((T - n.born) / 2));
+    const own = BASE_R[n.level] * n.sz * (n.kids.length
+      ? 0.8 + 0.45 * clamp((T - n.born) / (n.dv - n.born))
+      : 0.8 + 0.25 * easeOut((T - n.born) / 2));
     if (n.parent < 0) { pos[n.id] = [0, 0]; rad[n.id] = own * easeOut(T / 0.8 + 0.3); return; }
     const p = nodes[n.parent];
-    const [ux, uy] = axis[p.id];
-    const sg = p.kids[0] === n.id ? -1 : 1;
+    const i = p.kids.indexOf(n.id);
+    const [ux, uy] = p.kids.length === 2 ? axis[p.id].map((v) => v * (i ? 1 : -1)) : lobes[p.id][i];
     const rp = endR(p);
+    const lo = p.kids.length === 2 ? 0.8 : 0.55;
     const m = easeOut((T - n.born) / MOVE);
-    pos[n.id] = [lerp(p.x + ux * sg * rp * 0.8, n.x, m), lerp(p.y + uy * sg * rp * 0.8, n.y, m)];
-    rad[n.id] = lerp(rp * 0.8, own, easeOut((T - n.born) / 0.9));
+    pos[n.id] = [lerp(p.x + ux * rp * lo, n.x, m), lerp(p.y + uy * rp * lo, n.y, m)];
+    rad[n.id] = lerp(rp * (p.kids.length === 2 ? 0.8 : 0.7), own, easeOut((T - n.born) / 0.9));
   });
+}
+/** a cell dividing into 3 or 4: lobes bulge toward each daughter, walls form between them */
+function drawLobed(x: number, y: number, r: number, hue: number, q: number, dirs: [number, number][], lw: number, phase: number) {
+  const br = r * (1 + 0.05 * Math.sin(now * 1.8 + phase));
+  ctx.save();
+  ctx.beginPath();
+  const cs = dirs.map(([ux, uy]) => [x + ux * br * 0.55 * q, y + uy * br * 0.55 * q] as const);
+  cs.forEach(([cx, cy]) => { ctx.moveTo(cx + br * (1 - 0.3 * q), cy); ctx.arc(cx, cy, br * (1 - 0.3 * q), 0, Math.PI * 2); });
+  const g = ctx.createRadialGradient(x, y, br * 0.1, x, y, br * 1.4);
+  g.addColorStop(0, oklch(0.5, 0.1, hue, 0.35)); g.addColorStop(1, oklch(0.68, 0.14, hue, 0.6));
+  ctx.fillStyle = g; ctx.shadowColor = oklch(0.78, 0.15, hue, 0.85); ctx.shadowBlur = 22; ctx.fill('nonzero');
+  ctx.shadowBlur = 0; ctx.strokeStyle = oklch(0.86, 0.13, hue, 0.85); ctx.lineWidth = lw; ctx.stroke();
+  cs.forEach(([cx, cy]) => {
+    ctx.beginPath(); ctx.arc(cx, cy, br * 0.26, 0, 7); ctx.fillStyle = oklch(0.92, 0.1, hue, 0.95); ctx.fill();
+  });
+  ctx.restore();
 }
 const exists = (n: Node, T: number) => T >= n.born && (n.parent >= 0 || T >= 0);
 const isCell = (n: Node, T: number) => exists(n, T) && T < n.dv;
@@ -531,7 +758,7 @@ function chain(id: number): [number, number][] {
 }
 
 const DT = 0.06;
-interface ColonyOpts { stream?: number; divLabels?: boolean; names?: number; lit?: Map<number, number>; lw?: number }
+interface ColonyOpts { stream?: number; divLabels?: boolean; names?: number; lit?: Map<number, number>; lw?: number; spreadY?: number }
 /** draws the colony at structure time T (flow time Tf) under a world transform with zoom z; returns documents absorbed */
 function drawColony(T: number, Tf: number, z: number, startX: number, o: ColonyOpts = {}) {
   const px = 1 / z; // one screen pixel in world units
@@ -548,7 +775,7 @@ function drawColony(T: number, Tf: number, z: number, startX: number, o: ColonyO
       if (Tf - arr < 0.35) flashes.push([cellAt(nodes, j, Math.min(arr, T)), (Tf - arr) / 0.35]);
     } else if (o.stream) {
       const dest = cellAt(nodes, j, Math.min(arr, T));
-      const sy = (hash(i, 3) - 0.5) * 560 * px;
+      const sy = (hash(i, 3) - 0.5) * (o.spreadY ?? 560) * px;
       flying.push(along([[startX, sy], ...chain(dest)], ease((Tf - spawn) / L)));
     }
   }
@@ -585,7 +812,8 @@ function drawColony(T: number, Tf: number, z: number, startX: number, o: ColonyO
     const [x, y] = pos[n.id], r = rad[n.id];
     const q = n.kids.length ? ease((T - (n.dv - 0.9)) / 0.9) : 0;
     const lit = o.lit?.get(n.id) ?? 0;
-    drawLiving(x, y, r * (1 + 0.25 * lit), n.hue, { phase: n.id * 1.7, q, ux: axis[n.id][0], uy: axis[n.id][1], lw: 2 * px, light: lit, glow: 1 + lit });
+    if (n.kids.length > 2 && q > 0) drawLobed(x, y, r, n.hue, q, lobes[n.id], 2 * px, n.id * 1.7);
+    else drawLiving(x, y, r * (1 + 0.25 * lit), n.hue, { phase: n.id * 1.7, q, ux: axis[n.id][0], uy: axis[n.id][1], lw: 2 * px, light: lit, glow: 1 + lit });
     const count = pre[n.hi] - pre[n.lo];
     const dots = Math.min(n.level < 2 ? 16 : 9, count) * (1 - q);
     for (let k = 0; k < dots; k++) {
@@ -602,12 +830,22 @@ function drawColony(T: number, Tf: number, z: number, startX: number, o: ColonyO
   // one fading line per division level
   if (o.divLabels) {
     DIV_LABEL.forEach((lab, L) => {
-      const first = nodes.filter((n) => n.level === L).sort((a, b) => a.dv - b.dv)[0];
+      const first = nodes.filter((n) => n.level === L && n.kids.length).sort((a, b) => a.dv - b.dv)[0];
+      if (!first || L > 2) return;
       const a = clamp((T - first.dv) / 0.4) * clamp((first.dv + 3 - T) / 0.8);
       if (a <= 0) return;
       const [x, y] = pos[first.id];
       ctx.save(); ctx.globalAlpha *= a;
       wtext(`divided ${lab}`, x, y - endR(first) * 3.3 - 40 * px, 22, TEXT(0.95), z, 600, MONO);
+      ctx.restore();
+    });
+    // 3- and 4-way divisions are called out while they happen
+    nodes.forEach((n) => {
+      if (n.kids.length < 3) return;
+      const a = clamp((T - (n.dv - 0.9)) / 0.3) * clamp((n.dv + 1.4 - T) / 0.5);
+      if (a <= 0) return;
+      ctx.save(); ctx.globalAlpha *= a;
+      wtext(`splits in ${n.kids.length}`, n.x, n.y + endR(n) * 1.9 + 26 * px, 20, oklch(0.9, 0.12, n.hue), z, 700, MONO);
       ctx.restore();
     });
   }
@@ -634,7 +872,7 @@ function camera(cx: number, cy: number, z: number, fx: number, fy: number) {
 const CC = { x: 800, y: 470 }; // colony centre on screen
 
 // ---------------------------------------------------------------- act 3: building
-function act3() {
+function actColony() {
   const T = A3OFF[li] + Math.min(t, A3[li]);
   const Tf = A3OFF[li] + t;
   layout(T);
@@ -648,7 +886,7 @@ function act3() {
   text('documents, tickets, Slack, contracts  →', 40, 180, 20, TEXT2(0.9), 'left', 500, MONO, true);
   ctx.restore();
   const spec = nodes.filter((n) => isCell(n, T)).length;
-  counter(1540, 58, absorbed * 37, 'documents read');
+  counter(1540, 58, absorbed, 'documents read');
   counter(1540, 128, spec, 'specialists');
 }
 function counter(x: number, y: number, v: number, label: string) {
@@ -701,9 +939,27 @@ function drawFact(x: number, y: number, r: number, hue: number, label: string | 
   ctx.restore();
 }
 
-function act4() {
-  const s = li === 0 ? ease(t / 2.0) : 1;
+/** before the dive: point at the PC 200 specialist */
+function markPC(a: number) {
+  if (a <= 0) return;
+  layout(TEND);
+  const z = zoomFor(TEND);
+  const x = CC.x + pos[PC.id][0] * z, y = CC.y + pos[PC.id][1] * z, r = rad[PC.id] * z;
+  ctx.save(); ctx.globalAlpha *= a;
+  const pr = (now * 1.1) % 1;
+  ctx.beginPath(); ctx.arc(x, y, r + 10 + pr * 24, 0, 7); ctx.strokeStyle = oklch(0.9, 0.13, PC.hue, 1 - pr); ctx.lineWidth = 3; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r + 10, 0, 7); ctx.strokeStyle = TEXT(0.95); ctx.lineWidth = 2.5; ctx.stroke();
+  const lx = x - 150, ly = y - 90;
+  ctx.beginPath(); ctx.moveTo(x - (r + 10) * 0.7, y - (r + 10) * 0.7); ctx.lineTo(lx + 60, ly + 18); ctx.strokeStyle = TEXT(0.8); ctx.lineWidth = 2; ctx.stroke();
+  pill(lx, ly, 200, 44, oklch(0.22, 0.05, PC.hue, 0.95), oklch(0.88, 0.13, PC.hue), 2);
+  text('PC 200 specialist', lx, ly + 1, 20, TEXT(), 'center', 700, MONO);
+  ctx.restore();
+}
+
+function actZoom() {
+  const s = li === 0 ? ease((t - 1.0) / 2.0) : 1;
   const da = drawDive(s);
+  if (li === 0) markPC(1 - clamp(s * 4));
   if (da <= 0) return;
   const hue = PC.hue;
   ctx.save(); ctx.globalAlpha *= da;
@@ -818,7 +1074,7 @@ function drawPhone(at: number, sx: number, sy: number) {
 }
 
 // ---------------------------------------------------------------- act 5: a question is routed
-function act5() {
+function actRoute() {
   if (li === 0) {
     const s = 1 - ease(t / 1.8);
     const da = drawDive(s);
@@ -867,7 +1123,7 @@ const COLUMNS = [
   { title: 'Alive', sub: 'Mitosis', kind: 3, items: ['Caught while reading', 'Knows the context', 'New knowledge joins instantly', 'Tells the owner', 'One answer you can trust'] },
 ];
 
-function act6() {
+function actTriptych() {
   COLUMNS.forEach((col, i) => {
     const bx = 70 + i * 505, bw = 450;
     const a = ph(0, i * 0.35, 0.7);
@@ -887,7 +1143,7 @@ function act6() {
       layout(TEND);
       const s = 0.2;
       camera(bx + bw / 2, my + mh / 2, s, 0, 0);
-      drawColony(TEND, colonyFlow(), s, -(bw / 2) / s - 10, { stream: 0.8, lw: 1.6 });
+      drawColony(TEND, colonyFlow(), s, -(bw / 2 - 14) / s, { stream: 0.8, lw: 1.6, spreadY: mh - 60 });
       ctx.restore();
     } else {
       const s = bw / W;
@@ -916,7 +1172,7 @@ function drawBackground() {
   ctx.fillStyle = oklch(0.155, 0.028, 255);
   ctx.fillRect(-2000, -2000, W + 4000, H + 4000);
   const g = ctx.createRadialGradient(W / 2, H / 2, 200, W / 2, H / 2, 950);
-  g.addColorStop(0, oklch(0.2, 0.035, 255, cur.act >= 3 ? 0.9 : 0.5));
+  g.addColorStop(0, oklch(0.2, 0.035, 255, cur.act >= 5 ? 0.9 : 0.5));
   g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
@@ -927,24 +1183,25 @@ function frame() {
   li = step - actStart(cur.act);
   t = now - stepStart;
   drawBackground();
-  const fadeIn = li === 0 && [1, 3, 6].includes(cur.act) ? ease(t / 0.6) : 1;
+  const fadeIn = li === 0 && [1, 2, 3, 4, 5, 8].includes(cur.act) ? ease(t / 0.6) : 1;
   ctx.save(); ctx.globalAlpha = fadeIn;
-  [act0, act1, act2, act3, act4, act5, act6][cur.act]();
+  [act0, act1, act2, act3, act4, actColony, actZoom, actRoute, actTriptych][cur.act]();
   drawTags();
   ctx.restore();
   // title + caption + legend
   const title = TITLES[cur.act];
   if (title) {
-    const ta = li === 0 && cur.act !== 4 && cur.act !== 5 ? ease(t / 0.6) : 1;
-    text(title[0], 60, 52, 15, oklch(0.8, 0.1, cur.act >= 3 ? AGENT_HUE : 25, ta), 'left', 600, MONO);
+    const ta = li === 0 && cur.act !== 6 && cur.act !== 7 ? ease(t / 0.6) : 1;
+    text(title[0], 60, 52, 15, oklch(0.8, 0.1, cur.act >= 4 ? AGENT_HUE : 25, ta), 'left', 600, MONO);
     text(title[1], 60, 88, 34, TEXT(ta), 'left', 700);
   }
-  const cap = CAPTIONS[cur.act];
+  const capv = CAPTIONS[cur.act];
+  const cap = Array.isArray(capv) ? capv[li] : capv;
   if (cap) {
-    const ca = li === 0 ? ease((t - 0.3) / 0.6) : 1;
-    text(cap, W / 2, 858, 30, cur.act >= 3 ? TEXT(0.95 * ca) : TEXT2(0.9 * ca), 'center', 500);
+    const ca = li === 0 || Array.isArray(capv) ? ease((t - 0.3) / 0.6) : 1;
+    text(cap, W / 2, 858, 30, cur.act >= 4 ? TEXT(0.95 * ca) : TEXT2(0.9 * ca), 'center', 500);
   }
-  if (cur.act >= 1 && cur.act <= 5) drawLegend(52, 782);
+  if (cur.act >= 1 && cur.act <= 7) drawLegend(52, 782);
   const n = actEnd(cur.act) - actStart(cur.act) + 1;
   for (let k = 0; k < n && n > 1; k++) {
     ctx.beginPath(); ctx.arc(W - 60 - (n - 1 - k) * 16, 858, 4, 0, 7);

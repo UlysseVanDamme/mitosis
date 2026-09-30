@@ -1,18 +1,18 @@
-// The Mitosis colony: one living cell that divides, level by level, into 32
-// specialists. Everything is a pure function of simulation time T (seconds),
-// so any step can be jumped to or frozen for screenshots.
+// The Mitosis colony: one living cell that grows and divides organically into
+// specialists. Each cell divides on its own clock (wider domains fill faster),
+// into 2, 3 or 4 daughters; some small cells never divide. Everything is a pure
+// function of simulation time T (seconds), so any moment can be frozen.
 export const LEAVES = 32;
-const DEPTH = 5;
-const RADII = [0, 85, 190, 305, 425, 540];
-export const BASE_R = [44, 40, 36, 32, 30, 27];
-const DIV_BASE = [5.0, 8.0, 10.3, 12.8, 15.2];
-const DIV_SPREAD = [0, 0.6, 1.0, 1.4, 2.6];
-export const DIV_LABEL = ['by joint committee', 'by client', 'by country', 'by topic'];
+const MAXL = 5;
+const RADII = [0, 100, 215, 330, 440, 545];
+export const BASE_R = [44, 40, 35, 31, 28, 26];
+export const DIV_LABEL = ['by joint committee', 'by client', 'by country', 'by topic', 'by topic'];
 export const SX = 1.35, SY = 0.82; // colony is an ellipse to fit 16:9
 export const MOVE = 1.3; // seconds a daughter takes to reach its place
+const LAST_DIV = 21.5; // no division after this, so the colony settles
 
 export const NAMES: Record<number, string> = {
-  4: 'PC 200', 13: 'Van Dessel', 24: 'Belgium law', 9: 'PC 124', 19: 'Netherlands', 29: 'Holiday pay',
+  4: 'PC 200', 13: 'Van Dessel', 24: 'Belgium law', 9: 'Sick leave', 19: 'Netherlands', 29: 'Holiday pay',
 };
 export const ASK = [4, 13, 24]; // specialists that answer the Van Dessel question
 
@@ -21,7 +21,7 @@ export interface Node {
   x: number; y: number; // final position
   lo: number; hi: number; // leaf range [lo, hi)
   born: number; dv: number; // birth and division time (Infinity for leaves)
-  hue: number;
+  hue: number; sz: number; // hue and size factor
 }
 
 function rng(seed: number) {
@@ -41,29 +41,38 @@ export function hash(i: number, k: number) {
 
 export function buildColony(): Node[] {
   const nodes: Node[] = [];
+  const rand = rng(17);
   const off = Math.PI - ((LEAVES / 4 - 0.5) / LEAVES) * Math.PI * 2;
-  const make = (level: number, lo: number, hi: number, parent: number): number => {
+  const make = (level: number, lo: number, hi: number, parent: number, born: number): number => {
     const mid = (lo + hi - 1) / 2;
-    const th = (mid / LEAVES) * Math.PI * 2 + off;
+    const th = (mid / LEAVES) * Math.PI * 2 + off + (rand() - 0.5) * 0.04;
+    const R = RADII[level] * (1 + (rand() - 0.5) * 0.12);
     const n: Node = {
       id: nodes.length, level, parent, kids: [], lo, hi,
-      x: Math.cos(th) * RADII[level] * SX, y: Math.sin(th) * RADII[level] * SY,
-      born: 0, dv: Infinity, hue: 150 + (mid / (LEAVES - 1)) * 200,
+      x: Math.cos(th) * R * SX, y: Math.sin(th) * R * SY,
+      born, dv: Infinity, hue: 150 + (mid / (LEAVES - 1)) * 200, sz: 0.88 + rand() * 0.26,
     };
     nodes.push(n);
-    if (level < DEPTH) {
-      const h = (lo + hi) / 2;
-      n.kids = [make(level + 1, lo, h, n.id), make(level + 1, h, hi, n.id)];
+    const w = hi - lo;
+    let k = 0, dv = Infinity;
+    if (level === 0) { k = 2; dv = 4.6; }
+    else if (level === 1 && lo === 0) { k = 4; dv = born + 2.0; } // the visible 4-way split
+    else if (w >= 2 && level < MAXL && !(level >= 2 && rand() < 0.2)) {
+      const r = rand();
+      k = Math.min(w, r < 0.42 ? 2 : r < 0.75 ? 3 : 4);
+      dv = born + (1.7 + 2.6 * rand()) * Math.min(1.4, Math.max(0.7, Math.sqrt(8 / w)));
+      if (dv > LAST_DIV) { k = 0; dv = Infinity; }
+    }
+    if (k) {
+      n.dv = dv;
+      for (let i = 0; i < k; i++) {
+        const a = lo + Math.round((i * w) / k), b = lo + Math.round(((i + 1) * w) / k);
+        n.kids.push(make(level + 1, a, b, n.id, dv));
+      }
     }
     return n.id;
   };
-  make(0, 0, LEAVES, -1);
-  const rand = rng(5);
-  for (let L = 0; L < DEPTH; L++) {
-    const lv = nodes.filter((n) => n.level === L).map((n) => [n, rand()] as const).sort((a, b) => a[1] - b[1]);
-    lv.forEach(([n], k) => { n.dv = DIV_BASE[L] + (lv.length > 1 ? (k / (lv.length - 1)) * DIV_SPREAD[L] : 0); });
-  }
-  nodes.forEach((n) => { if (n.parent >= 0) n.born = nodes[n.parent].dv; });
+  make(0, 0, LEAVES, -1, 0);
   return nodes;
 }
 
@@ -75,5 +84,5 @@ export function cellAt(nodes: Node[], j: number, T: number): number {
 }
 
 export function leafNode(nodes: Node[], j: number) {
-  return nodes.find((n) => n.kids.length === 0 && n.lo === j)!;
+  return nodes.find((n) => n.kids.length === 0 && n.lo <= j && j < n.hi)!;
 }
