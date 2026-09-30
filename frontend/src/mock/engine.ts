@@ -1,6 +1,6 @@
 // A small in-browser imitation of the backend swarm. Emits the exact PLAN.md
 // event schema with stage-like timing so the UI can be built and demoed alone.
-import type { Agent, Claim, Conflict, Doc, MitosisEvent, Router, RoutingStats, Split, VerifiedFact } from '../types';
+import type { Agent, AppNotification, Claim, Conflict, Doc, Handover, MitosisEvent, Router, RoutingStats, Split, VerifiedFact } from '../types';
 import { CONFLICTS, GOLDEN, OWNERS, orderedCorpus, type MockDoc } from './corpus';
 import { deriveAssessment } from '../assess';
 
@@ -60,7 +60,7 @@ export class MockEngine {
 
   private resetState() {
     this.agents.clear(); this.routes.clear(); this.conflicts.clear(); this.docs.clear();
-    this.facts = []; this.splits = []; this.nextAgent = 1; this.owners = [...OWNERS];
+    this.facts = []; this.splits = []; this.notes = []; this.nextAgent = 1; this.owners = [...OWNERS];
     this.routing = { rule: 0, s1: 0, s2: 0, s1_ms_avg: 0, s2_ms_avg: 0 }; this.routed = 0;
     this.agents.set('A0', {
       agent_id: 'A0', parent_id: null, depth: 0, status: 'active',
@@ -118,6 +118,8 @@ export class MockEngine {
     for (const doc of corpus) {
       if (!(await this.ingestOne(doc, g))) return;
     }
+    this.bud();
+    if (!(await this.sleep(1600, g))) return;
     const st = { docs: this.docs.size, agents: this.agents.size, splits: this.splits.length, conflicts: this.conflicts.size };
     this.emit({ type: 'ingest_done', ...st });
   }
@@ -186,6 +188,7 @@ export class MockEngine {
       this.emit({ type: 'conflict_detected', conflict, agent_id: leaf });
       this.emitInbox(leaf);
       if (pc.kind === 'forecast_vs_final') this.emitImpact(conflict);
+      if (conflict.hero) this.notifyOwner(conflict);
     }
 
     if (a.tokens > this.budget) {
@@ -225,6 +228,65 @@ export class MockEngine {
       type: 'impact_detected', conflict_id: c.conflict_id, agent_id: c.agent_id, losing_value: lose.value, winning_value: win.value, affected,
       summary: `${cfg.client} payroll config still uses ${lose.value}: fix before the payroll run`,
     });
+  }
+
+  // ---------- wave 4: notifications, handover, budding ----------
+  private notes: AppNotification[] = [];
+  private nn = 0;
+  private note(n: Omit<AppNotification, 'id' | 'ts' | 'delivered_slack' | 'channel'>) {
+    const full: AppNotification = { ...n, id: `N${++this.nn}`, ts: Date.now() / 1000, channel: 'slack', delivered_slack: true };
+    this.notes.push(full);
+    this.emit({ type: 'notification', ...full });
+  }
+
+  private notifyOwner(c: Conflict) {
+    const owner = this.agents.get(c.agent_id)?.owner ?? '';
+    const jan = /Jan Peeters|PC 200/.test(owner) || (c.sides ?? []).some((x) => /pc200/.test(x.doc_id));
+    const win = c.sides?.find((x) => x.wins), lose = c.sides?.find((x) => !x.wins);
+    this.note({
+      to: jan ? 'jan' : 'desk', to_name: jan ? 'Jan Peeters' : 'Knowledge desk', conflict_id: c.conflict_id, query_id: null,
+      title: 'A contradiction needs your decision',
+      text: win && lose ? `${lose.value} (${lose.source}) vs ${win.value} (${win.source}). ${c.plain_summary ?? ''}.` : c.summary,
+      actions: [...(win ? [{ label: `Confirm ${win.value}`, url: `/api/verify?conflict_id=${c.conflict_id}` }] : []), { label: 'Open', url: `/?mode=explore&conflict=${c.conflict_id}` }],
+    });
+  }
+
+  notifications(username: string) { return this.notes.filter((n) => n.to === username).reverse(); }
+
+  handover(username: string): Handover | null {
+    if (username !== 'sofie') return null;
+    const items = [...this.conflicts.values()]
+      .filter((c) => (c.sides ?? []).some((x) => /vandessel|pc200/.test(x.doc_id)))
+      .sort((a, b) => Number(!!b.hero) - Number(!!a.hero))
+      .slice(0, 5)
+      .map((c) => ({
+        conflict_id: c.conflict_id, plain_summary: c.plain_summary ?? c.summary, sides: c.sides ?? [],
+        impacts: c.kind === 'forecast_vs_final' ? ['January payroll run uses this figure'] : ['Applies to Van Dessel pay components'],
+        owner: this.agents.get(c.agent_id)?.owner ?? 'Knowledge desk', status: c.status,
+      }));
+    return { client: 'Brouwerij Van Dessel', items };
+  }
+
+  private bud() {
+    const hub = [...this.agents.values()].filter((a) => a.status === 'split').sort((a, b) => a.depth - b.depth)[0];
+    if (!hub) return;
+    const cid = `A${this.nextAgent++}`;
+    const topic = 'pay transparency';
+    const agent: Agent = {
+      agent_id: cid, parent_id: hub.agent_id, depth: hub.depth + 1, status: 'active',
+      scope: { dimension: 'topic', value: topic, description: `${hub.scope.description === 'Everything' ? '' : hub.scope.description + ' · '}${topic}` },
+      doc_ids: [], claims: [], tokens: 900, owner: this.owners.shift() ?? 'Knowledge desk', children: [], created_ts: Date.now() / 1000,
+    };
+    this.agents.set(cid, agent);
+    hub.children = [...hub.children, cid];
+    const parentSplit = [...this.splits].reverse().find((x) => x.parent_id === hub.agent_id);
+    const split: Split = {
+      split_id: `S${this.splits.length + 1}`, parent_id: hub.agent_id, dimension: 'topic', kind: 'bud',
+      rule: `${topic} → ${cid}`, children: [cid], tokens_before: hub.tokens, ts: Date.now() / 1000,
+      reason: `budded from ${parentSplit?.split_id ?? hub.agent_id}: new topic ${topic}. The EU pay transparency directive fit none of the existing specialists (best similarity 0.21, below the floor).`,
+    };
+    this.splits.push(split);
+    this.emit({ type: 'agent_budded', parent_id: hub.agent_id, agent: { ...agent }, split });
   }
 
   private claim(id: string): Claim | undefined {
@@ -383,8 +445,15 @@ export class MockEngine {
       docs: seen.map((d) => this.pub(d)), conflicts, trust, experts, blocked,
       claimDoc: (id) => id.split('#c')[0],
     });
+    const factors = [
+      ...(official ? [{ label: `${official} official source${official > 1 ? 's' : ''}`, delta: Math.min(3, official) * 11 }] : []),
+      ...(verified ? [{ label: `verified by ${conflicts.find((c) => c.status === 'verified')?.verified_by ?? 'owner'}`, delta: verified * 20 }] : []),
+      ...(open ? [{ label: `${open} open contradiction${open > 1 ? 's' : ''}`, delta: -open * 17 }] : []),
+      ...(ownerless ? [{ label: 'ownerless source', delta: -ownerless * 6 }] : []),
+    ];
+    const trustObj = { score: trust, verdict: trust >= 75 ? 'trust' : trust >= 50 ? 'verify first' : 'do not rely', factors };
     this.emit({
-      type: 'query_answer', query_id, answer: blocked ? GOLDEN.find((x) => x.wow === 'Access control')!.answer : gq.answer, citations, conflicts, trust,
+      type: 'query_answer', query_id, answer: blocked ? GOLDEN.find((x) => x.wow === 'Access control')!.answer : gq.answer, citations, conflicts, trust: trustObj,
       owners: experts.map((x) => x.name), leaves: [...leaves], assessment,
     });
   }
@@ -403,6 +472,12 @@ export class MockEngine {
     this.facts.push(fact);
     this.emit({ type: 'conflict_verified', conflict: { ...c }, fact });
     this.emitInbox(c.agent_id);
+    const win = c.sides?.find((x) => x.wins);
+    this.note({
+      to: 'sofie', to_name: 'Sofie', conflict_id, query_id: null, title: `Verified by ${by}`,
+      text: `Your Van Dessel question is verified by ${by}: ${win ? `${win.value} (${win.source})` : c.resolution}.`,
+      actions: [{ label: 'Open answer', url: `/?mode=explore&conflict=${conflict_id}` }],
+    });
   }
 }
 

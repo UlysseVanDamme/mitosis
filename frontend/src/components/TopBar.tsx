@@ -31,34 +31,17 @@ export function TopBar() {
           <circle cx="20" cy="11" r="8.5" className="glyph-b" />
         </svg>
         <span className="brand-name">Mitosis</span>
-        <span className={`conn ${s.connected ? 'on' : ''}`} title={s.connected ? 'Live' : 'Disconnected'}>
-          {MOCK ? 'mock stream' : s.connected ? 'live' : 'offline'}
-        </span>
       </div>
 
       <div className="stats">
-        <Stat label="docs read" value={st.docs} />
-        <Stat label="agents" value={st.leaves} />
-        <Stat label="splits" value={st.splits} tone="split" />
-        <Stat label="conflicts" value={st.conflicts} tone={st.open ? 'warn' : ''} />
-        <Stat label="verified" value={st.verified} tone="ok" />
-        {st.redacted > 0 && <Stat label="PII redacted" value={st.redacted} tone="muted" />}
-        {st.quarantined > 0 && <Stat label="quarantined" value={st.quarantined} tone="muted" />}
-        {s.ingesting && <div className="ingesting"><i /> reading</div>}
+        <Stat label="documents read" value={st.docs} />
+        <Stat label="specialists" value={st.leaves} />
+        <Stat label="contradictions caught" value={st.conflicts} tone={st.open ? 'warn' : ''} />
       </div>
 
       <div className="controls">
         {s.auth?.role === 'client' && (
           <button className="btn ghost" onClick={() => patch({ view: 'portal', activeQueryId: null })}>Client portal view</button>
-        )}
-        {s.auth?.role === 'admin' && (
-          <>
-            <button className="btn primary" disabled={busy || s.ingesting} onClick={() => run(api.ingest)}>
-              {s.ingesting ? 'Ingesting…' : 'Start ingest'}
-            </button>
-            <button className="btn ghost" disabled={busy} onClick={() => run(api.reset)}>Reset</button>
-            <button className="btn ghost" disabled={busy} onClick={() => run(api.replay)}>Replay</button>
-          </>
         )}
         <UserSwitcher />
       </div>

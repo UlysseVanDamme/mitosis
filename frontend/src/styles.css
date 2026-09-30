@@ -534,3 +534,94 @@ a.ev-cite:hover { background: oklch(0.88 0.14 85 / 0.14); }
   .src, .catch-verdict, .catch-sub { transition: opacity 0.2s; }
   .st-divide, .owner, .st-ans, .st-num b.bump { animation: none; }
 }
+
+/* ---------- wave 4: Explore inspector (two sizes: 15px / 13px; three colours) ---------- */
+.insp { grid-area: panel; border-left: 1px solid var(--line-soft); background: var(--surface); display: flex; flex-direction: column; min-height: 0; position: relative; z-index: 2; font-size: 13px; }
+.insp-back { align-self: flex-start; margin: 14px 18px 0; background: none; border: 0; color: var(--text-2); font-size: 13px; padding: 0; }
+.insp-back:hover { color: var(--text); }
+.insp-body { overflow: auto; padding: 16px 18px 24px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.insp h2 { font-size: 15px; font-weight: 600; margin: 0 0 4px; line-height: 1.35; }
+.insp h3 { font-size: 13px; font-weight: 600; margin: 10px 0 0; color: var(--text-2); }
+.insp p { margin: 0; line-height: 1.5; }
+.muted { color: var(--text-3); }
+.row, .ho { display: grid; grid-template-columns: 10px 1fr; gap: 4px 10px; align-items: baseline; text-align: left; width: 100%; background: none; border: 0; border-bottom: 1px solid var(--line-soft); padding: 10px 2px; font-size: 13px; }
+.row:hover, .ho:hover { background: var(--surface-2); }
+.row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); align-self: center; }
+.row .dot.r { background: var(--red); } .row .dot.g { background: var(--green); }
+.row-t { font-size: 13px; color: var(--text); }
+.row-m { grid-column: 2; font-size: 13px; color: var(--text-3); }
+.ho { grid-template-columns: 26px 1fr; padding: 12px 2px; }
+.ho-n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: oklch(0.68 0.2 25 / 0.2); color: var(--red); font-size: 13px; font-weight: 600; }
+.ho.verified .ho-n { background: oklch(0.8 0.15 150 / 0.18); color: var(--green); }
+.ho-b { display: grid; gap: 2px; }
+.sides { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.side { display: grid; gap: 2px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); position: relative; }
+.side-v { font-size: 15px; }
+.side.win { border-color: oklch(0.8 0.15 150 / 0.6); }
+.side.lose { opacity: 0.6; } .side.lose .side-v { text-decoration: line-through; }
+.side-tag { font-size: 13px; color: var(--text-3); }
+.side.win .side-tag { color: var(--green); }
+.impact { color: var(--red); }
+.ok-line { color: var(--green); }
+.insp .btn { align-self: flex-start; }
+.know { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
+.q { color: var(--text-3); font-size: 13px; }
+.ans { font-size: 15px !important; line-height: 1.45; }
+.verdict { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border-left: 3px solid var(--text-3); font-size: 13px; }
+.verdict b { font-size: 15px; text-transform: capitalize; }
+.verdict.t-ok { border-left-color: var(--green); } .verdict.t-ok b { color: var(--green); }
+.verdict.t-bad, .verdict.t-mid { border-left-color: var(--red); } .verdict.t-bad b, .verdict.t-mid b { color: var(--red); }
+.why-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.why-chips span { font-size: 13px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--text-2); }
+.why-chips .up { border-color: oklch(0.8 0.15 150 / 0.45); } .why-chips .down { border-color: oklch(0.68 0.2 25 / 0.5); }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.checks li { display: flex; gap: 8px; align-items: baseline; }
+.checks i { font-style: normal; width: 14px; color: var(--text-3); }
+.checks .tk-ok i { color: var(--green); } .checks .tk-bad i { color: var(--red); }
+.warn { color: var(--text-2); border-left: 2px solid var(--red); padding-left: 10px; }
+.plain { color: var(--text-3); } .plain s { text-decoration-color: var(--red); }
+.lvl { display: flex; gap: 8px; }
+.lvl button { background: none; border: 1px solid var(--line); border-radius: 99px; padding: 2px 12px; font-size: 13px; color: var(--text-2); }
+.lvl button.on { color: var(--text); border-color: var(--text-3); }
+.cites { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.cites a { color: var(--text); }
+
+.askbar { grid-area: dock; border-top: 1px solid var(--line-soft); background: oklch(0.14 0.026 256); padding: 12px 18px 14px; display: grid; gap: 8px; position: relative; z-index: 2; }
+.askbar form { display: flex; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 5px 5px 5px 14px; }
+.askbar input { flex: 1; background: none; border: 0; outline: 0; color: var(--text); font: 15px var(--sans); }
+.askbar .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.askbar .chip { font-size: 13px; }
+
+.hood-open { position: absolute; left: 16px; bottom: 14px; z-index: 3; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 4px 14px; font-size: 13px; color: var(--text-2); }
+.hood { position: absolute; left: 12px; bottom: 12px; z-index: 3; width: min(560px, calc(100% - 24px)); max-height: 55%; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 20px 50px oklch(0.08 0.02 255 / 0.6); font-size: 13px; }
+.hood header { display: flex; gap: 4px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+.hood header button { background: none; border: 0; padding: 3px 8px; border-radius: 6px; color: var(--text-3); font-size: 13px; }
+.hood header button.on { color: var(--text); background: var(--surface-2); }
+.hood header .lens { margin-left: auto; display: flex; gap: 2px; }
+.hood .hud { position: static; margin: 8px 10px 0; }
+.hood-body { overflow: auto; padding: 8px 12px 12px; display: grid; gap: 8px; }
+.sp.bud b { color: var(--green); }
+.lg { font-size: 13px; }
+
+/* ---------- phone mockup ---------- */
+.phone { position: fixed; right: 24px; bottom: 24px; z-index: 60; width: 300px; height: 440px; border-radius: 38px; background: oklch(0.12 0.01 255); border: 8px solid oklch(0.26 0.01 255); box-shadow: 0 30px 70px oklch(0.05 0.02 255 / 0.7); display: flex; flex-direction: column; overflow: hidden; transform: translateY(120%); transition: transform 0.6s var(--ease); font-size: 13px; }
+.phone.in { transform: none; }
+.phone-notch { width: 90px; height: 20px; border-radius: 0 0 14px 14px; background: oklch(0.26 0.01 255); margin: 0 auto; }
+.phone-h { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 10px; border-bottom: 1px solid var(--line-soft); }
+.phone-h b { font-size: 15px; } .phone-h span { color: var(--text-3); flex: 1; }
+.phone-h button { background: none; border: 0; color: var(--text-3); font-size: 15px; }
+.phone-body { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; background: oklch(0.16 0.012 255); }
+.bubble { background: var(--surface-3); border-radius: 16px 16px 16px 4px; padding: 10px 12px; display: grid; gap: 6px; animation: bubble 0.5s var(--ease); }
+.bubble b { font-size: 13px; } .bubble p { margin: 0; line-height: 1.45; color: var(--text-2); }
+.bubble-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.bubble-acts button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 99px; padding: 4px 12px; font-size: 13px; }
+.bubble-acts button.primary { background: var(--green); color: oklch(0.2 0.05 150); border-color: transparent; font-weight: 600; }
+.bubble-t { justify-self: end; color: var(--text-3); font-size: 13px; }
+.phone-slack { text-align: center; color: var(--text-3); font-size: 13px; }
+@keyframes bubble { from { opacity: 0; transform: translateY(10px) scale(0.97); } }
+
+/* ---------- stage: handover ---------- */
+.st-handover { position: absolute; left: 50%; top: 170px; transform: translateX(-50%); width: min(620px, calc(100% - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 4px; z-index: 5; animation: bubble 0.5s var(--ease); pointer-events: auto; }
+.st-handover h2 { font-size: 20px; margin: 0 0 6px; font-weight: 600; }
+.st-handover .row-t { font-size: 15px; }
+.ho-b .row-m { grid-column: auto; }

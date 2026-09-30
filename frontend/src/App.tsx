@@ -2,19 +2,15 @@ import { useEffect, useRef } from 'react';
 import { Scene } from './canvas/Scene';
 import { getState, patch, useStore } from './store';
 import { TopBar } from './components/TopBar';
-import { Legend, SidePanel, Ticker, Toasts } from './components/SidePanel';
-import { AnswerSheet, Drawer, QueryDock } from './components/Query';
 import { Login } from './components/Auth';
-import { RoutingHud, StageTools } from './components/Hud';
+import { AskBar, Hood, Inspector } from './components/Inspector';
+import { Phone } from './components/Phone';
 import { Portal } from './components/Portal';
 import { Stage } from './components/Stage';
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<Scene | null>(null);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const active = useStore((s) => s.activeQueryId);
-  const ingesting = useStore((s) => s.ingesting);
   const view = useStore((s) => s.view);
   const role = useStore((s) => s.auth?.role);
   const portal = view === 'portal' && role === 'client';
@@ -30,7 +26,7 @@ export function App() {
     const click = (e: MouseEvent) => {
       const r = c.getBoundingClientRect();
       const id = scene.hit(e.clientX - r.left, e.clientY - r.top);
-      patch({ selectedAgent: id });
+      if (id) patch({ selectedAgent: id, selectedConflict: null, activeQueryId: null });
     };
     const move = (e: MouseEvent) => {
       const r = c.getBoundingClientRect();
@@ -58,18 +54,6 @@ export function App() {
     scene.insetBottom = 0;
   }, [stage]);
 
-  // Keep the colony framed above the answer sheet.
-  useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene || stage) return;
-    if (!active) { scene.insetBottom = 0; scene.clearQuery(); return; }
-    const el = sheetRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => { scene.insetBottom = el.offsetHeight + 12; });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [active, stage]);
-
   return (
     <>
     {portal && <Portal />}
@@ -77,22 +61,12 @@ export function App() {
       {!stage && <TopBar />}
       <main className="stage">
         <canvas ref={canvasRef} className="dish" />
-        {stage ? <Stage sceneRef={sceneRef} /> : (
-          <>
-            <RoutingHud />
-            <Ticker />
-            <Toasts />
-            {!active && !ingesting && <Legend />}
-            <AnswerSheet key={active ?? "none"} ref={sheetRef} />
-            {!active && <StageTools />}
-            <Hint />
-          </>
-        )}
+        {stage ? <Stage sceneRef={sceneRef} /> : <><Hint /><Hood /></>}
       </main>
-      {!stage && <SidePanel />}
-      {!stage && <QueryDock />}
-      {!stage && <Drawer />}
+      {!stage && <Inspector />}
+      {!stage && <AskBar />}
     </div>
+    <Phone />
     <Login />
     </>
   );
