@@ -170,6 +170,10 @@ class SecurityHeadersMiddleware:
 
 
 # ----------------------------------------------------------------------------- access views
+_GENERIC_NAME_WORDS = {"brouwerij", "bouwgroep", "restogroep", "softwarehuis", "interieur", "logistics",
+                       "group", "groep", "client", "clients", "general"}
+
+
 class View:
     """What one caller may see of the swarm right now. Built per request / per event."""
 
@@ -181,6 +185,11 @@ class View:
         self.hidden_clients = sorted({d.client for i, d in s.docs.items()
                                       if i not in self.visible and d.client and d.client != own},
                                      key=len, reverse=True)
+        # short forms ("Mertens", "Gouden Lepel") also leak the client; mask distinctive words too
+        own_words = set((own or "").lower().split())
+        words = {w for n in self.hidden_clients for w in n.split()
+                 if len(w) >= 4 and w.lower() not in _GENERIC_NAME_WORDS and w.lower() not in own_words}
+        self.hidden_clients += sorted(words, key=len, reverse=True)
         self.claim_doc = {cid: c.doc_id for cid, c in s.claims.items()}
 
     def redact(self, text: Any) -> Any:
@@ -188,7 +197,7 @@ class View:
         if self.full or not isinstance(text, str) or not self.hidden_clients:
             return text
         for name in self.hidden_clients:
-            text = re.sub(re.escape(name), "[restricted client]", text, flags=re.IGNORECASE)
+            text = re.sub(r"\b" + re.escape(name) + r"\b", "[restricted client]", text, flags=re.IGNORECASE)
         return text
 
     def doc_ok(self, doc_id: Any) -> bool:

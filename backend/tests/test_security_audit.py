@@ -185,3 +185,13 @@ def test_unit_filter_drops_cross_unit_pairs():
     assert value_unit("1 February 2026") == "date" and value_unit("2026-02-01") == "date"
     assert not same_unit("2.21%", "145 EUR") and not same_unit("20 days", "2.21%")
     assert same_unit("2.21%", "2.13%") and same_unit("2.21%", "yes")
+
+
+def test_view_masks_short_client_names():
+    from types import SimpleNamespace as NS
+    docs = {"m": NS(access_group="client:Mertens Interieur", client="Mertens Interieur"),
+            "g": NS(access_group="client:Restogroep De Gouden Lepel", client="Restogroep De Gouden Lepel"),
+            "v": NS(access_group="client:Brouwerij Van Dessel", client="Brouwerij Van Dessel")}
+    v = View(NS(docs=docs, claims={}), DEMO_USERS["vandessel"] if isinstance(DEMO_USERS, dict) else next(x for x in DEMO_USERS if x.username == "vandessel"))
+    out = v.redact("Delta and Mertens tickets; the Gouden Lepel case; Brouwerij Van Dessel stays")
+    assert "Mertens" not in out and "Gouden" not in out and "Brouwerij Van Dessel" in out
