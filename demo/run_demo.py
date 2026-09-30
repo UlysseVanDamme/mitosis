@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["httpx", "rich"]
+# ///
 """Mitosis live demo driver.
 
-  uv run --with httpx --with rich demo/run_demo.py                 # full live run, timed questions
+  uv run demo/run_demo.py                                           # full live run, timed questions
   ... demo/run_demo.py --interactive                                # Enter between questions
   ... demo/run_demo.py --record stage                               # also save events to demo/recordings/stage.jsonl
   ... demo/run_demo.py --replay demo/recordings/stage.jsonl         # replay via /api/replay (or locally if API is down)
