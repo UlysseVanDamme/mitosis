@@ -85,6 +85,7 @@ class Split(BaseModel):
     reason: str
     tokens_before: int
     ts: float
+    kind: Literal["split", "bud"] = "split"
 
 
 class Conflict(BaseModel):

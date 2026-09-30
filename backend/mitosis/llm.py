@@ -104,7 +104,7 @@ CLAIMS_SCHEMA = _obj({"claims": {"type": "array", "items": _obj({
     "quote": _S,
 })}})
 
-ROUTE_SCHEMA = _obj({"agent_ids": {"type": "array", "items": _S}, "reason": _S})
+ROUTE_SCHEMA = _obj({"agent_ids": {"type": "array", "items": _S}, "none_fits": {"type": "boolean"}, "reason": _S})
 
 SPLIT_SCHEMA = _obj({
     "dimension": {"type": "string", "enum": DIMENSIONS},
@@ -183,7 +183,9 @@ class FakeLLM:
         return list(out.values())
 
     # --- routing a document at a split node
-    async def route_doc(self, doc: Document, children: list[dict]) -> list[str]:
+    async def route_doc(self, doc: Document, children: list[dict], allow_none: bool = False) -> list[str]:
+        if allow_none:  # only asked when System 1 is below the bud floor: the fake trusts that floor
+            return []
         for c in children:
             if "other" in (c.get("value") or "").lower():
                 return [c["agent_id"]]
@@ -451,14 +453,18 @@ class RealLLM(FakeLLM):
         except Exception:  # noqa: BLE001
             return await super().extract_claims(doc)
 
-    async def route_doc(self, doc: Document, children: list[dict]) -> list[str]:
+    async def route_doc(self, doc: Document, children: list[dict], allow_none: bool = False) -> list[str]:
         opts = "\n".join(f"- {c['agent_id']}: {c['description']}" for c in children)
-        user = (f"Route this document to the child agent(s) whose scope fits. Pick several only if it truly spans scopes.\n"
+        none_rule = ("If no child's scope fits this document's topic at all, set none_fits true and return no agent_ids.\n"
+                     if allow_none else "")
+        user = (f"Route this document to the child agent(s) whose scope fits. Pick several only if it truly spans scopes.\n{none_rule}"
                 f"Children:\n{opts}\n\nDocument: {doc.title} | country {doc.country} | pc {doc.pc} | client {doc.client} | "
                 f"topic {doc.topic} | date {doc.date} | {doc.source_type}\n{wrap_doc(doc.doc_id, doc.text[:600])}")
         try:
             data = await self._json(HAIKU, "You route documents to the right knowledge agent. " + DATA_RULE, user, ROUTE_SCHEMA, 500)
             valid = {c["agent_id"] for c in children}
+            if allow_none and data.get("none_fits"):
+                return []
             ids = [a for a in data.get("agent_ids", []) if a in valid]
             if ids:
                 return ids[:2]
