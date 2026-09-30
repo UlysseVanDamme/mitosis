@@ -27,7 +27,7 @@ export interface Doc {
 export type Role = 'admin' | 'expert' | 'consultant' | 'client' | 'public';
 export interface User { username: string; display_name: string; role: Role; access?: string[] | string }
 
-export interface Check { verdict: string; evidence: string }
+export interface Check { verdict: string; evidence: string | string[] }
 export interface Expert { name: string; role: string; agent_id: string }
 export interface Assessment {
   reliable: Check; current: Check; applies: Check; gaps: Check;

@@ -336,7 +336,7 @@ export function applyEvent(e: MitosisEvent, animate = false) {
       const tr = typeof e.trust === 'number' ? null : e.trust;
       const score = tr ? tr.score : (e.trust as number);
       const assessment = e.assessment && tr ? { ...e.assessment, trust: { ...e.assessment.trust, score: tr.score, verdict: tr.verdict || e.assessment.trust.verdict, factors: tr.factors } } : e.assessment;
-      const q = { ...query(s, e.query_id), answer: { answer: e.answer, citations: e.citations, conflicts: e.conflicts, trust: score, owners: e.owners, leaves: e.leaves, assessment } };
+      const q = { ...query(s, e.query_id), answer: { answer: e.answer ?? '', citations: e.citations ?? [], conflicts: e.conflicts ?? [], trust: score ?? 0, owners: e.owners ?? [], leaves: e.leaves ?? [], assessment } };
       s.queries.set(e.query_id, q);
       if (!s.activeQueryId) s.activeQueryId = e.query_id;
       log(s, e, `Answer ready, trust ${score}`, 'ok');

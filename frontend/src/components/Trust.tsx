@@ -26,17 +26,19 @@ export function assessmentFor(q: QueryState, s: AppState): Assessment | null {
   const a = q.answer;
   if (!a) return null;
   if (a.assessment) return a.assessment;
-  const docs = a.citations.map((c) => ({ ...c, ...s.docs.get(c.doc_id) , doc_id: c.doc_id, source_type: s.docs.get(c.doc_id)?.source_type ?? '' }));
-  const experts = a.leaves.map((l, i) => ({ name: a.owners[i] ?? s.agents.get(l)?.owner ?? 'owner', role: `owner of ${s.agents.get(l)?.scope.description ?? l}`, agent_id: l }));
+  const docs = (a.citations ?? []).map((c) => ({ ...c, ...s.docs.get(c.doc_id) , doc_id: c.doc_id, source_type: s.docs.get(c.doc_id)?.source_type ?? '' }));
+  const experts = (a.leaves ?? []).map((l, i) => ({ name: a.owners?.[i] ?? s.agents.get(l)?.owner ?? 'owner', role: `owner of ${s.agents.get(l)?.scope.description ?? l}`, agent_id: l }));
   return deriveAssessment({
-    docs, conflicts: a.conflicts, trust: a.trust, experts,
+    docs, conflicts: a.conflicts ?? [], trust: a.trust, experts,
     claimDoc: (id) => s.claims.get(id)?.doc_id ?? id.split('#')[0],
-    blocked: !a.citations.length,
+    blocked: !a.citations?.length,
   });
 }
 
 /** Evidence text with inline [doc_id] refs turned into numbered source links. */
-function Evidence({ text, cites }: { text: string; cites: Citation[] }) {
+function Evidence({ text: raw, cites }: { text: string | string[]; cites: Citation[] }) {
+  // The live backend sends evidence as a list of lines; the mock sends one string.
+  const text = Array.isArray(raw) ? raw.join(' · ') : String(raw ?? '');
   const out: React.ReactNode[] = [];
   let last = 0, k = 0;
   for (const m of text.matchAll(/\[([A-Za-z0-9_\-.:#]+)\]/g)) {
@@ -61,6 +63,7 @@ export function Ledger({ a, cites, portal }: { a: Assessment; cites: Citation[];
     <dl className={`ledger ${portal ? 'portal-ledger' : ''}`} aria-label="Can I trust this answer?">
       {ROWS.map((r) => {
         const c = a[r.key];
+        if (!c) return null;
         const t = toneOf(r.key, c.verdict);
         return (
           <div className="lrow" key={r.key}>
