@@ -88,9 +88,10 @@ const GREY = (l = 0.42, a = 1) => oklch(l, 0.012, 250, a);
 const TEXT = (a = 1) => oklch(0.95, 0.01, 250, a);
 const TEXT2 = (a = 1) => oklch(0.78, 0.02, 250, a);
 
-function text(s: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = 'center', weight = 500, font = SANS) {
+function text(s: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = 'center', weight = 500, font = SANS, halo = false) {
   ctx.font = `${weight} ${size}px ${font}`;
   ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if (halo) { ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = oklch(0.155, 0.028, 255, 0.9); ctx.strokeText(s, x, y); }
   ctx.fillStyle = color; ctx.fillText(s, x, y);
 }
 function pill(x: number, y: number, w: number, h: number, fill: string, stroke?: string, lw = 1.5) {
@@ -114,9 +115,9 @@ const TAGS: Tag[] = [
   { act: 1, at: 1, text: 'Only when asked', x: 470, y: 190, targets: [[470, 120]] },
   { act: 1, at: 2, text: 'Picks similar, not true', x: 190, y: 420, targets: ['f213', 'p1'], delay: 2.2 },
   { act: 1, at: 3, text: 'Wrong context', x: 1090, y: 785, targets: ['nl', 'pc124'] },
-  { act: 1, at: 4, text: 'Old looks like new', x: 270, y: 655, targets: ['p1'] },
+  { act: 1, at: 4, text: 'Old looks like new', x: 430, y: 660, targets: ['p1'] },
   { act: 1, at: 5, text: 'One confident answer, no owner', x: 1300, y: 190, targets: [[1300, 150]], delay: 0.5 },
-  { act: 2, at: 1, text: 'Linked, never compared', x: 850, y: 420, targets: [edgeMid(edges.findIndex(([a, b]) => a + b === 1 && a * b === 0))] },
+  { act: 2, at: 1, text: 'Linked, never compared', x: 520, y: 178, targets: [edgeMid(edges.findIndex(([a, b]) => a + b === 1 && a * b === 0))] },
   { act: 2, at: 2, text: 'Not in graph until rebuild', x: 1400, y: 175, targets: [[NEWDOC.x2, NEWDOC.y2]], delay: 1.2 },
   { act: 2, at: 3, text: 'Many hops to search · 14', x: 1200, y: 120, targets: [], delay: 3 },
   { act: 2, at: 4, text: 'Someone must maintain it', x: edgeMid(brokenEdge)[0] + 60, y: edgeMid(brokenEdge)[1] + 120, targets: [edgeMid(brokenEdge)], delay: 0.6 },
@@ -195,7 +196,7 @@ function drawCell(c: Cell, opts: { labels?: boolean; dim?: number } = {}) {
   ctx.globalAlpha = dim * clamp(labelAlpha);
   if (opts.labels !== false && c.lines.length) {
     c.lines.forEach((ln, i) =>
-      text(ln, x, y + r + 16 + i * 20, i === 0 ? 17 : 15, i === 0 ? TEXT(lerp(0.62, 0.95, alive)) : TEXT2(lerp(0.5, 0.75, alive)), 'center', i === 0 ? 600 : 500));
+      text(ln, x, y + r + 16 + i * 20, i === 0 ? 17 : 15, i === 0 ? TEXT(lerp(0.62, 0.95, alive)) : TEXT2(lerp(0.5, 0.75, alive)), 'center', i === 0 ? 600 : 500, SANS, true));
   }
   ctx.restore();
 }
