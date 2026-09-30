@@ -24,7 +24,8 @@ export function App() {
     };
     const move = (e: MouseEvent) => {
       const r = c.getBoundingClientRect();
-      c.style.cursor = scene.hit(e.clientX - r.left, e.clientY - r.top) ? 'pointer' : 'default';
+      scene.hover = scene.hit(e.clientX - r.left, e.clientY - r.top);
+      c.style.cursor = scene.hover ? 'pointer' : 'default';
     };
     c.addEventListener('click', click);
     c.addEventListener('mousemove', move);

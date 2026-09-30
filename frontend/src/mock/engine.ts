@@ -10,13 +10,13 @@ const DIM_PREF: string[][] = [
   ['country', 'pc', 'topic'],
   ['pc', 'topic', 'client'],
   ['client', 'topic', 'period'],
-  ['topic', 'period', 'source_type'],
-  ['period', 'source_type', 'topic'],
+  ['topic', 'period'],
+  ['period', 'topic'],
 ];
 
 export class MockEngine {
   private emitFn: Emit;
-  budget = 4800;
+  budget = 6000;
   speed = 1;
   private gen = 0;
   private agents = new Map<string, Agent>();
@@ -149,7 +149,7 @@ export class MockEngine {
     const a = this.agents.get(id)!;
     const docs = a.doc_ids.map((d) => this.docs.get(d)!);
     const used = this.ancestorsDims(id);
-    const prefs = [...(DIM_PREF[Math.min(a.depth, DIM_PREF.length - 1)]), 'topic', 'period', 'source_type', 'pc', 'client'];
+    const prefs = [...(DIM_PREF[Math.min(a.depth, DIM_PREF.length - 1)]), 'topic', 'period', 'pc', 'client'];
     let dim: string | null = null;
     for (const p of prefs) {
       if (used.has(p) && p !== 'topic') continue;

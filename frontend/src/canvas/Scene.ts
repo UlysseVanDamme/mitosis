@@ -29,7 +29,7 @@ interface SplitAnim {
   parent: string; children: string[]; start: number; R: number; px: number; py: number;
   base: number; hue0: number; chroma0: number; dim: string; rule: string; splitId: string;
 }
-interface FloatLabel { x: number; y: number; title: string; body: string; start: number; hue: number }
+interface FloatLabel { x: number; y: number; title: string; body: string; start: number; hue: number; ids: string[] }
 
 const SPLIT_MS = 950;
 const now = () => performance.now();
@@ -51,12 +51,14 @@ export class Scene {
   private bg: HTMLCanvasElement | null = null;
   private specks: { x: number; y: number; r: number; v: number; p: number }[] = [];
   private raf = 0;
+  private last = 0;
   private unsub: () => void;
   private queryLeaves = new Set<string>();
   private queryPath = new Set<string>();
   private queryDone = new Set<string>();
   private queryAt = 0;
   insetBottom = 0;
+  private dt = 16.7;
   hover: string | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -68,7 +70,7 @@ export class Scene {
         return (s.hub > 0.5 ? 10 : s.r) + targetR(t) + 34;
       }).strength(0.55))
       .force('charge', forceManyBody<Node>().strength((d) => (d.hub > 0.5 ? -40 : -50 - d.r * d.r * 0.3)).distanceMax(420))
-      .force('collide', forceCollide<Node>().radius((d) => (d.hub > 0.5 ? 12 : d.r + 14)).strength(0.9))
+      .force('collide', forceCollide<Node>().radius((d) => (d.hub > 0.5 ? 14 : d.r + 22)).strength(0.9))
       .force('radial', forceRadial<Node>((d) => d.depth * 120, 0, 0).strength((d) => (d.depth === 0 ? 0 : 0.07)))
       .alphaTarget(0.012)
       .velocityDecay(0.35);
@@ -205,7 +207,7 @@ export class Scene {
       (n as Node & { ang?: number }).ang = ang;
     });
     this.anims.push({ parent: parent.agent_id, children: children.map((c) => c.agent_id), start: now(), R: p.r, px, py, base, hue0: p.hue, chroma0: p.chroma, dim, rule, splitId });
-    this.labels.push({ x: px, y: py - p.r - 24, title: `${splitId} · split on ${dimLabel(dim)}`, body: rule.replace(/->/g, '→'), start: now(), hue: (DIM_HUE[dim] ?? DIM_HUE.root)[0] });
+    this.labels.push({ x: px, y: py - p.r - 24, title: `${splitId} · split on ${dimLabel(dim)}`, body: rule.replace(/->/g, '→'), start: now(), hue: (DIM_HUE[dim] ?? DIM_HUE.root)[0], ids: [parent.agent_id, ...children.map((c) => c.agent_id)] });
     // Update the parent so it becomes a hub once the division completes.
     if (parent.agent_id !== 'A0') { p.fx = px; p.fy = py; }
     this.rebuildLinks(s);
@@ -235,6 +237,9 @@ export class Scene {
   private loop = () => {
     this.raf = requestAnimationFrame(this.loop);
     const t = now();
+    const dt = this.last ? Math.min(60, t - this.last) : 16.7;
+    this.last = t;
+    this.dt = dt;
     const s = getState();
     this.sim.tick();
     this.step(s, t);
@@ -286,7 +291,7 @@ export class Scene {
     // Particles.
     this.particles = this.particles.filter((p) => {
       const segDur = p.kind === 'probe' ? 240 : 190;
-      p.t += 16.7 / (p.seg === -1 ? 260 : segDur);
+      p.t += this.dt / (p.seg === -1 ? 260 : segDur);
       if (p.t >= 1) {
         p.t = 0; p.seg++;
         if (p.seg >= p.path.length - 1) {
@@ -298,8 +303,15 @@ export class Scene {
       return true;
     });
     for (const l of this.labels) {
-      const an = this.anims.find((a) => a.splitId && l.title.startsWith(a.splitId));
-      if (an) l.y = an.py - an.R - 30;
+      // Float above the new family, following it as it drifts.
+      let minY = Infinity, sx = 0, c = 0;
+      for (const id of l.ids) {
+        const n = this.nodes.get(id);
+        if (!n) continue;
+        minY = Math.min(minY, (n.y ?? 0) - (n.hub > 0.5 ? 10 : n.r));
+        sx += n.x ?? 0; c++;
+      }
+      if (c) { l.x += (sx / c - l.x) * 0.2; l.y += (minY - 18 / this.cam.k - l.y) * 0.2; }
     }
     this.labels = this.labels.filter((l) => t - l.start < 4200);
 
@@ -487,6 +499,9 @@ export class Scene {
     const r = n.r * (1 + n.pulse * 0.06 + (dividing ? 0.06 * Math.sin(t / 60) : 0)) * (0.6 + 0.4 * easeOut(born));
     const H = n.hue, C = n.chroma;
     const qLeaf = this.queryLeaves.has(n.id);
+    const focusDim = this.queryLeaves.size > 0 && !qLeaf;
+    ctx.save();
+    if (focusDim) ctx.globalAlpha = 0.28;
 
     // halo
     const glow = 0.16 + over * 0.35 + n.pulse * 0.25 + (dividing ? 0.35 : 0) + (qLeaf ? 0.25 : 0);
@@ -546,9 +561,11 @@ export class Scene {
     ctx.fillStyle = oklch(0.93, 0.03, H, 0.92);
     const label = a.scope.dimension === 'root' ? 'Everything' : short(a.scope.value === 'other' ? a.scope.description.split(' · ').pop() ?? 'other' : labelVal(a));
     ctx.fillText(label, 0, kr * 1.08 + 5);
-    ctx.font = '400 10.5px "JetBrains Mono", monospace';
-    ctx.fillStyle = oklch(0.75, 0.03, H, 0.7);
-    ctx.fillText(`${(a.tokens / 1000).toFixed(1)}k · ${a.owner.split(' ')[0]}`, 0, kr * 1.08 + 21);
+    if (kr > 30 || qLeaf || this.hover === n.id) {
+      ctx.font = '400 10.5px "JetBrains Mono", monospace';
+      ctx.fillStyle = oklch(0.75, 0.03, H, 0.7);
+      ctx.fillText(`${(a.tokens / 1000).toFixed(1)}k · ${a.owner.split(' ')[0]}`, 0, kr * 1.08 + 21);
+    }
     ctx.restore();
 
     // query highlight: rotating dashed ring, solid once answered
@@ -597,6 +614,7 @@ export class Scene {
       ctx.fillText(String(open), 0, 0.5);
       ctx.restore();
     }
+    ctx.restore();
   }
 
   private drawHub(n: Node, a: Agent, t: number) {
@@ -612,8 +630,10 @@ export class Scene {
     ctx.save(); ctx.translate(x, y); ctx.scale(1 / k, 1 / k);
     ctx.font = '500 10px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
     ctx.fillStyle = oklch(0.8, 0.03, n.hue, 0.65);
-    const lab = a.agent_id === 'A0' ? 'A0 · root' : `${a.agent_id} · ${short(labelVal(a), 14)}`;
-    ctx.fillText(lab, 0, -r * k - 8);
+    if (a.agent_id === 'A0' || onPath || this.hover === n.id) {
+      const lab = a.agent_id === 'A0' ? 'A0 · root' : `${a.agent_id} · ${short(labelVal(a), 14)}`;
+      ctx.fillText(lab, 0, -r * k - 8);
+    }
     ctx.restore();
   }
 
@@ -626,7 +646,7 @@ export class Scene {
     const N = kids.length;
     const cx = an.px, cy = an.py;
     // Daughters grow from overlapping lobes into full cells.
-    const rStart = an.R * (N === 2 ? 0.78 : 0.66);
+    const rStart = an.R * (N === 2 ? 0.9 : 0.78);
     const radii = kids.map((c) => { const a = s.agents.get(c.id); return rStart + ((a ? targetR2(a, s.budget) : 20) - rStart) * e; });
     const neck = Math.pow(1 - e, 1.6);
     const hueOf = (c: Node) => an.hue0 + (c.hue - an.hue0) * e;

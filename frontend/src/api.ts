@@ -1,4 +1,4 @@
-import { applyEvent, patch } from './store';
+import { applyEvent, onEvent, patch } from './store';
 import type { Agent, GoldenQuestion, MitosisEvent } from './types';
 import { MockEngine } from './mock/engine';
 
@@ -12,6 +12,15 @@ export function connect() {
     patch({ connected: true });
     mock.snapshot();
     if (params.get('autostart') === '1') void mock.ingest();
+    const aq = params.get('autoquery');
+    if (aq != null) {
+      const m = mock;
+      onEvent((e) => {
+        if (e.type !== 'ingest_done') return;
+        const g = m.golden()[Number(aq) || 0];
+        m.query(g.question, g.user).then(({ query_id }) => patch({ activeQueryId: query_id }));
+      });
+    }
     return;
   }
   let es: EventSource | null = null;

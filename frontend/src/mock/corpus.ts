@@ -184,7 +184,7 @@ export function orderedCorpus(): MockDoc[] {
   return out;
 }
 
-export const OWNERS = ['Sofie Claes', 'Pieter Wouters', 'Lotte Peeters', 'Jens Maes', 'Eva Jansen', 'Hanne Goossens', 'Bram De Smet', 'Nina Vermeulen', 'Wout Jacobs', 'Marie Dubois', 'Tom Hermans', 'Els Mertens', 'Arne Willems', 'Lies Van Acker', 'Karel Dierickx', 'Fien Lambrecht'];
+export const OWNERS = ['Sofie Claes', 'Pieter Wouters', 'Lotte Peeters', 'Jens Maes', 'Eva Jansen', 'Hanne Goossens', 'Bram De Smet', 'Nina Vermeulen', 'Wout Jacobs', 'Marie Dubois', 'Tom Hermans', 'Els Mertens', 'Arne Willems', 'Lies Van Acker', 'Karel Dierickx', 'Fien Lambrecht', 'Ruben Declercq', 'Joke Verhaeghe', 'Stijn Coppens', 'Amber De Wilde', 'Thomas Maes', 'Laura Pauwels', 'Koen Desmet', 'Ines Van Damme', 'Robbe Martens', 'Sara El Idrissi', 'Dries Vandamme', 'Charlotte Leroy', 'Mehdi Benali', 'Anouk de Vries', 'Bart Smets', 'Julie Renard', 'Sander Bakker', 'Emma Wouters', 'Yannick Aerts', 'Leen Goethals'];
 
 export interface MockGolden {
   question: string; user: string; keyDocs: string[]; answer: string; baseline: string; baselineDocs: string[]; wow: string;
