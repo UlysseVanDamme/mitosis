@@ -60,7 +60,7 @@ export function buildColony(): Node[] {
     else if (w >= 2 && level < MAXL && !(level >= 2 && rand() < 0.2)) {
       const r = rand();
       k = Math.min(w, r < 0.42 ? 2 : r < 0.75 ? 3 : 4);
-      dv = born + (1.7 + 2.6 * rand()) * Math.min(1.4, Math.max(0.7, Math.sqrt(8 / w)));
+      dv = born + (level === 1 ? 2.2 : 0) + (1.7 + 2.6 * rand()) * Math.min(1.4, Math.max(0.7, Math.sqrt(8 / w)));
       if (dv > LAST_DIV) { k = 0; dv = Infinity; }
     }
     if (k) {

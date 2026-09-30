@@ -238,7 +238,7 @@ const TAGS: Tag[] = [
 ];
 
 function drawTags() {
-  const mine = TAGS.filter((g) => g.act === cur.act && g.at <= li);
+  const mine = TAGS.filter((g) => g.act === cur.act && g.at <= li && !(cur.act === 3 && li > 0));
   const latest = Math.max(-1, ...mine.map((g) => g.at));
   for (const g of mine) {
     const a = ph(g.at, g.delay ?? 0.2, 0.5, easeOut) * (g.at === latest ? 1 : 0.4);
@@ -441,7 +441,7 @@ function act2() {
       ctx.lineWidth = 3 + 2 * bad; ctx.stroke(); ctx.restore();
     } else { ctx.strokeStyle = GREY(0.5, 0.6); ctx.lineWidth = 1.5; ctx.stroke(); }
   });
-  text('same topic: PC 200 index Jan 2026', KG_MID[0], KG_MID[1] - 22, 19, bad > 0 ? oklch(0.9, 0.08, 25) : TEXT2(0.9), 'center', 600, MONO, true);
+  text('same topic: PC 200 index Jan 2026', KG_MID[0], KG_MID[1] - 50, 19, bad > 0 ? oklch(0.9, 0.08, 25) : TEXT2(0.9), 'center', 600, MONO, true);
   const f = li === 1 ? clamp((t - 0.6) / CRAWL) : li > 1 ? 1 : 0;
   KG.forEach((n, i) => {
     const big = i < 2;
@@ -468,9 +468,9 @@ function act2() {
   // it carries both facts back
   const carry = [0, 1].filter((i) => f >= kgTouch(2 + i));
   carry.forEach((i) => {
-    const ox = ax + (i ? 34 : -34), oy = ay + 34;
+    const ox = ax + (i ? 58 : -58), oy = ay;
     ctx.beginPath(); ctx.arc(ox, oy, 9, 0, 7); ctx.fillStyle = GREY(0.5); ctx.fill();
-    text(i ? '2.21%' : '2.13%', ox, oy + 22, 16, TEXT(0.85), 'center', 600, MONO, true);
+    text(i ? '2.21%' : '2.13%', ox + (i ? 42 : -42), oy + 1, 16, TEXT(0.85), 'center', 600, MONO, true);
   });
   answerCard(800, QY, '2.13% or 2.21%?  Both linked. Can’t tell.', 'unsure', ph(2, 0, 0.5));
 }
@@ -522,7 +522,8 @@ function act3() {
     ctx.save();
     const wob = 1 + over * 0.05 * Math.sin(now * 9);
     ctx.translate(BIG.x, BIG.y); ctx.scale(1 + over * 0.12 * wob, 1 - over * 0.05);
-    drawLiving(0, 0, r, hue, { lw: lerp(3, 0.7, clamp(f)), glow: 1 + over, phase: 0.3 });
+    drawLiving(0, 0, r, hue, { lw: lerp(3, 0.7, clamp(f)), glow: 1 + over, phase: 0.3, nucleus: false });
+    ctx.beginPath(); ctx.arc(0, 0, 20, 0, 7); ctx.fillStyle = oklch(0.92, 0.1, hue, 0.95); ctx.fill();
     ctx.restore();
     nIn.forEach(([lx, ly, i], k) => {
       const age = k / Math.max(1, n);
@@ -642,16 +643,16 @@ function act4() {
     text('split on?', 1180, 410, 22, TEXT(0.9), 'left', 700, MONO);
     DIMS.forEach(([d, sc, good], k) => {
       const y = 456 + k * 44, on = k === hi;
-      if (on) pill(1290, y, 250, 38, settle && good ? oklch(0.24, 0.06, 150, 0.95) : oklch(0.25, 0.03, 255, 0.95), settle && good ? GREEN(0.9) : TEXT2(0.5), 2);
+      if (on) pill(1318, y, 300, 38, settle && good ? oklch(0.24, 0.06, 150, 0.95) : oklch(0.25, 0.03, 255, 0.95), settle && good ? GREEN(0.9) : TEXT2(0.5), 2);
       text(d, 1176, y + 1, 20, on ? TEXT() : TEXT2(0.6), 'left', 600, MONO);
-      text(sc, 1400, y + 1, 18, on ? (good ? GREEN() : RED(0.9)) : TEXT2(0.45), 'right', 600, MONO);
+      text(sc, 1452, y + 1, 18, on ? (good ? GREEN() : RED(0.9)) : TEXT2(0.45), 'right', 600, MONO);
     });
     if (settle) text('balanced, by meaning  ✓', 1176, 600, 18, GREEN(0.9), 'left', 600, MONO);
   }
   // step 5: the split table writes itself
   if (li >= 4) {
     const n = li > 4 ? SPLIT_ROW.length : Math.floor(clamp((t - 0.2) / 2.4) * SPLIT_ROW.length);
-    const y = 720;
+    const y = 690;
     ctx.beginPath(); ctx.roundRect(150, y - 50, 1300, 92, 12);
     ctx.fillStyle = oklch(0.18, 0.03, 255, 0.95); ctx.fill(); ctx.strokeStyle = TEXT2(0.25); ctx.lineWidth = 1.5; ctx.stroke();
     text('split table', 176, y - 28, 16, TEXT2(0.7), 'left', 600, MONO);
@@ -680,7 +681,7 @@ function act4() {
       ctx.beginPath(); ctx.arc(x, y, 9, 0, 7); ctx.fillStyle = GREY(0.55); ctx.fill();
       text('PC 200 index · Feb', x + 18, y - 16, 19, TEXT(0.9), 'left', 600, MONO, true);
     }
-    if (dec > 0) text('joint committee = PC 200  →  left', M.x, M.y + 80, 20, GREEN(0.95 * dec), 'center', 600, MONO, true);
+    if (dec > 0) text('PC 200 → left', M.x, M.y + 66, 20, GREEN(0.95 * dec), 'center', 600, MONO, true);
     const fl = ph(5, 2.1, 0.6, easeOut);
     if (fl > 0 && fl < 1) {
       ctx.beginPath(); ctx.arc(centre(true), M.y, dr * (1 + 0.3 * fl), 0, 7); ctx.strokeStyle = oklch(0.9, 0.12, HUE_PC, 1 - fl); ctx.lineWidth = 3; ctx.stroke();
@@ -949,9 +950,9 @@ function markPC(a: number) {
   const pr = (now * 1.1) % 1;
   ctx.beginPath(); ctx.arc(x, y, r + 10 + pr * 24, 0, 7); ctx.strokeStyle = oklch(0.9, 0.13, PC.hue, 1 - pr); ctx.lineWidth = 3; ctx.stroke();
   ctx.beginPath(); ctx.arc(x, y, r + 10, 0, 7); ctx.strokeStyle = TEXT(0.95); ctx.lineWidth = 2.5; ctx.stroke();
-  const lx = x - 150, ly = y - 90;
+  const lx = x - 175, ly = y - 90;
   ctx.beginPath(); ctx.moveTo(x - (r + 10) * 0.7, y - (r + 10) * 0.7); ctx.lineTo(lx + 60, ly + 18); ctx.strokeStyle = TEXT(0.8); ctx.lineWidth = 2; ctx.stroke();
-  pill(lx, ly, 200, 44, oklch(0.22, 0.05, PC.hue, 0.95), oklch(0.88, 0.13, PC.hue), 2);
+  pill(lx, ly, 250, 44, oklch(0.22, 0.05, PC.hue, 0.95), oklch(0.88, 0.13, PC.hue), 2);
   text('PC 200 specialist', lx, ly + 1, 20, TEXT(), 'center', 700, MONO);
   ctx.restore();
 }
