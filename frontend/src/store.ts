@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type {
-  Agent, Assessment, Citation, Claim, Conflict, Doc, MitosisEvent, RoutingStats, ServerState, Split, User, VerifiedFact,
+  Agent, Assessment, Citation, Claim, Conflict, Doc, Impact, MitosisEvent, RoutingStats, ServerState, Split, User, VerifiedFact,
 } from './types';
 
 export interface QueryState {
@@ -49,6 +49,8 @@ export interface AppState {
   view: 'lab' | 'portal';
   scrub: { i: number; n: number } | null; // time-lapse position; null = live
   loginFor: string | null; // username the login dialog is open for ('' = pick)
+  mode: 'stage' | 'explore';
+  impacts: Map<string, Impact>; // by conflict_id
 }
 
 export const ZERO_ROUTING: RoutingStats = { rule: 0, s1: 0, s2: 0, s1_ms_avg: 0, s2_ms_avg: 0 };
@@ -62,6 +64,7 @@ function empty(): AppState {
     connected: false, user: 'consultant', recent: [],
     auth: null, routing: ZERO_ROUTING, redactions: 0, redactKinds: [], quarantined: [],
     lens: 'scope', view: 'lab', scrub: null, loginFor: null,
+    mode: new URLSearchParams(location.search).get('mode') === 'explore' ? 'explore' : 'stage', impacts: new Map(),
   };
 }
 
@@ -140,11 +143,11 @@ function bumpRouting(r: RoutingStats, router: string, ms: number): RoutingStats 
 }
 
 function keepUi(p: AppState) {
-  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view };
+  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view, mode: p.mode };
 }
 
 // ---------- time-lapse: every colony event since the last reset ----------
-const TIMELINE_TYPES = new Set(['snapshot', 'doc_queued', 'doc_routed', 'doc_absorbed', 'conflict_detected', 'split_started', 'agent_split', 'agent_updated', 'conflict_verified', 'ingest_done', 'routing_stats', 'doc_quarantined', 'doc_redacted']);
+const TIMELINE_TYPES = new Set(['snapshot', 'doc_queued', 'doc_routed', 'doc_absorbed', 'conflict_detected', 'split_started', 'agent_split', 'agent_updated', 'conflict_verified', 'ingest_done', 'routing_stats', 'doc_quarantined', 'doc_redacted', 'impact_detected']);
 let timeline: MitosisEvent[] = [];
 let silent = false;
 export function timelineLength() { return timeline.length; }
@@ -348,6 +351,12 @@ export function applyEvent(e: MitosisEvent, animate = false) {
       log(s, e, `Verified by ${e.fact.verified_by}: ${e.fact.statement}`, 'ok');
       break;
     }
+    case 'impact_detected': {
+      const { type: _t, ts: _ts, ...imp } = e;
+      s.impacts = new Map(s.impacts); s.impacts.set(e.conflict_id, imp);
+      log(s, e, `Impact: ${e.summary}`, 'conflict');
+      break;
+    }
     case 'ingest_done': {
       s.ingesting = false;
       s.ingestDone = true;
@@ -360,6 +369,7 @@ export function applyEvent(e: MitosisEvent, animate = false) {
   eventListeners.forEach((l) => l(e, state));
   emit();
 
+  if (state.mode === 'stage') return; // Stage mode: no toast stacks.
   if (e.type === 'doc_quarantined') {
     pushToast({ tone: 'quarantine', title: 'Quarantined', body: `${quarantineKind(e.reason)} in ${state.docs.get(e.doc_id)?.source || e.title}` });
   }
@@ -391,4 +401,12 @@ export function stats(s: AppState) {
     redacted: s.redactions,
     quarantined: s.quarantined.length,
   };
+}
+
+/** Open conflicts needing a human in this cell: the server's count, else derived. */
+export function inboxOf(a: Agent, s: AppState): number {
+  if (typeof a.inbox === 'number') return a.inbox;
+  let n = 0;
+  for (const c of s.conflicts.values()) if (c.status === 'open' && (c.agent_id === a.agent_id)) n++;
+  return n;
 }

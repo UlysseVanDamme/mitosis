@@ -48,8 +48,14 @@ export class MockEngine {
   }
 
   private emit(e: Record<string, unknown>) { this.emitFn({ ts: Date.now() / 1000, ...e } as MitosisEvent); }
-  private sleep(ms: number, g: number) {
-    return new Promise<boolean>((r) => setTimeout(() => r(g === this.gen), ms / this.speed));
+  private paused = false;
+  private wake: (() => void) | null = null;
+  pause() { this.paused = true; }
+  resume() { this.paused = false; this.wake?.(); this.wake = null; }
+  private async sleep(ms: number, g: number) {
+    await new Promise<void>((r) => setTimeout(r, ms / this.speed));
+    while (this.paused && g === this.gen) await new Promise<void>((r) => { this.wake = r; });
+    return g === this.gen;
   }
 
   private resetState() {
@@ -98,6 +104,7 @@ export class MockEngine {
 
   reset() {
     this.gen++;
+    this.resume();
     this.resetState();
     this.emit({ type: 'reset' });
   }
@@ -161,19 +168,63 @@ export class MockEngine {
       if (pc.b !== doc.doc_id || !this.docs.has(pc.a)) continue;
       if (!(await this.sleep(380, g))) return false;
       const ca = `${pc.a}#c0`, cb = `${pc.b}#c0`;
+      const holder = this.leafOf(pc.a) ?? leaf;
+      const agent_ids = [...new Set([holder, leaf])];
+      const side = (id: string, wins: boolean) => {
+        const d = this.docs.get(id)!;
+        return { value: d.claims[0]?.value ?? '', source: d.source, source_type: d.source_type, date: d.date, doc_id: id, wins };
+      };
       const conflict: Conflict = {
         conflict_id: `C${this.conflicts.size + 1}`, agent_id: leaf, claim_ids: [ca, cb], kind: pc.kind,
-        summary: pc.summary, resolution: pc.resolution, status: pc.kind === 'temporal_supersession' || pc.kind === 'forecast_vs_final' ? 'auto_resolved' : 'open', verified_by: null,
+        summary: pc.summary, resolution: pc.resolution, status: pc.kind === 'temporal_supersession' || pc.kind === 'forecast_vs_final' || pc.kind === 'scope_difference' ? 'auto_resolved' : 'open', verified_by: null,
         claims: [this.claim(ca), this.claim(cb)].filter(Boolean) as Claim[],
+        cross_agent: agent_ids.length > 1, agent_ids, hero: !!pc.hero,
+        plain_summary: pc.plain ?? (pc.kind === 'scope_difference' ? 'Both valid, in different scopes' : pc.kind === 'temporal_supersession' ? 'The newer version replaces the old one' : 'Two sources disagree'),
+        sides: [side(pc.a, pc.winner === 'a'), side(pc.b, pc.winner === 'b')],
       };
       this.conflicts.set(conflict.conflict_id, conflict);
       this.emit({ type: 'conflict_detected', conflict, agent_id: leaf });
+      this.emitInbox(leaf);
+      if (pc.kind === 'forecast_vs_final') this.emitImpact(conflict);
     }
 
     if (a.tokens > this.budget) {
       if (!(await this.split(leaf, g))) return false;
     }
     return this.sleep(240, g);
+  }
+
+  private leafOf(docId: string) {
+    for (const a of this.agents.values()) if (a.status === 'active' && a.doc_ids.includes(docId)) return a.agent_id;
+    return null;
+  }
+
+  private inbox(id: string) {
+    let n = 0;
+    for (const c of this.conflicts.values()) if (c.status === 'open' && c.agent_id === id) n++;
+    return n;
+  }
+
+  private emitInbox(id: string) {
+    const a = this.agents.get(id);
+    if (!a) return;
+    a.inbox = this.inbox(id);
+    this.emit({ type: 'agent_updated', agent: { ...a } });
+  }
+
+  /** Wave 3: who still relies on the losing value? */
+  private emitImpact(c: Conflict) {
+    const lose = c.sides?.find((x) => !x.wins), win = c.sides?.find((x) => x.wins);
+    if (!lose || !win) return;
+    const affected = [...this.docs.values()]
+      .filter((d) => d.doc_id !== lose.doc_id && (d.source_type === 'config' || d.source_type === 'ticket') && d.claims.some((cl) => cl.value.replace(',', '.').includes(lose.value.replace(',', '.').replace('%', '').trim())))
+      .map((d) => ({ doc_id: d.doc_id, title: d.title, client: d.client, source_type: d.source_type, why: `still uses ${lose.value}` }));
+    const cfg = affected.find((x) => x.source_type === 'config');
+    if (!cfg) return;
+    this.emit({
+      type: 'impact_detected', conflict_id: c.conflict_id, agent_id: c.agent_id, losing_value: lose.value, winning_value: win.value, affected,
+      summary: `${cfg.client} payroll config still uses ${lose.value}: fix before the payroll run`,
+    });
   }
 
   private claim(id: string): Claim | undefined {
@@ -255,6 +306,8 @@ export class MockEngine {
       const owner = children.find((ch) => ch.claims.some((cl) => cl.claim_id === c.claim_ids[c.claim_ids.length - 1]));
       if (owner) c.agent_id = owner.agent_id;
     }
+    a.inbox = 0;
+    for (const ch of children) ch.inbox = this.inbox(ch.agent_id);
     this.emit({ type: 'agent_split', split, parent: { ...a }, children });
     if (!(await this.sleep(1300, g))) return false;
     for (const ch of children) if (ch.tokens > this.budget) if (!(await this.split(ch.agent_id, g))) return false;
@@ -349,6 +402,7 @@ export class MockEngine {
     };
     this.facts.push(fact);
     this.emit({ type: 'conflict_verified', conflict: { ...c }, fact });
+    this.emitInbox(c.agent_id);
   }
 }
 
