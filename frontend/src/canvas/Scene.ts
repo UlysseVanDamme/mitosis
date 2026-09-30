@@ -324,7 +324,7 @@ export class Scene {
     }
     if (!isFinite(x0)) { x0 = -100; x1 = 100; y0 = -100; y1 = 100; }
     // Visible window: leave room for the ticker (top-left) and legend (bottom).
-    const top = this.insetBottom ? 24 : 70, bottom = this.insetBottom ? 16 : 56;
+    const top = this.insetBottom ? 24 : 84, bottom = this.insetBottom ? 16 : 118;
     const vw = this.w - 60, vh = this.h - this.insetBottom - top - bottom;
     const k = Math.min(vw / (x1 - x0), vh / (y1 - y0), 3);
     // Zoom out quickly (never clip), zoom in slowly.
@@ -403,30 +403,39 @@ export class Scene {
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad * 4, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Floating split labels
+    ctx.restore();
+
+    // Floating split labels, drawn in screen space and kept inside the dish.
     for (const l of this.labels) {
       const age = t - l.start;
       const a = clamp(age / 250) * clamp((4200 - age) / 600);
       const lift = easeOut(clamp(age / 900)) * 14;
       ctx.save();
-      ctx.translate(l.x, l.y - lift);
-      ctx.scale(1 / k, 1 / k);
       ctx.textAlign = 'center';
-      ctx.font = '600 11px "Space Grotesk", sans-serif';
-      const tw = Math.max(ctx.measureText(l.title.toUpperCase()).width, measure(ctx, l.body, '500 13px "JetBrains Mono", monospace')) + 28;
-      ctx.fillStyle = oklch(0.2, 0.03, 260, 0.88 * a);
-      roundRect(ctx, -tw / 2, -40, tw, 48, 8); ctx.fill();
-      ctx.strokeStyle = oklch(0.75, 0.13, l.hue, 0.6 * a); ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = oklch(0.82, 0.12, l.hue, a);
+      const titleFont = '600 13px "Space Grotesk", sans-serif', bodyFont = '500 15px "JetBrains Mono", monospace';
+      ctx.font = titleFont;
       ctx.letterSpacing = '1.5px';
-      ctx.fillText(l.title.toUpperCase(), 0, -22);
+      const tw = Math.min(this.w - 24, Math.max(ctx.measureText(l.title.toUpperCase()).width, measure(ctx, l.body, bodyFont)) + 32);
       ctx.letterSpacing = '0px';
-      ctx.font = '500 13px "JetBrains Mono", monospace';
-      ctx.fillStyle = oklch(0.96, 0.01, 260, a);
-      ctx.fillText(l.body, 0, -4);
+      let sx = cx + (l.x - this.cam.x) * k, sy = cy + (l.y - this.cam.y) * k - lift;
+      // keep clear of the toast column (top-right, ~350px) when the dish is wide enough
+      const right = sy < 240 && this.w - 362 - tw > 24 ? this.w - 362 : this.w - 12;
+      sx = clamp(sx, 12 + tw / 2, right - tw / 2);
+      sy = clamp(sy, 66, this.h - this.insetBottom - 20);
+      ctx.translate(sx, sy);
+      ctx.fillStyle = oklch(0.2, 0.03, 260, 0.92 * a);
+      roundRect(ctx, -tw / 2, -54, tw, 58, 9); ctx.fill();
+      ctx.strokeStyle = oklch(0.75, 0.13, l.hue, 0.7 * a); ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.font = titleFont;
+      ctx.fillStyle = oklch(0.84, 0.13, l.hue, a);
+      ctx.letterSpacing = '1.5px';
+      ctx.fillText(l.title.toUpperCase(), 0, -32);
+      ctx.letterSpacing = '0px';
+      ctx.font = bodyFont;
+      ctx.fillStyle = oklch(0.97, 0.01, 260, a);
+      ctx.fillText(ellipsize(ctx, l.body, tw - 24), 0, -10);
       ctx.restore();
     }
-    ctx.restore();
   }
 
   private drawBackground(t: number) {
@@ -558,14 +567,14 @@ export class Scene {
       ctx.fillText(n.id, 0, 0.5);
     }
     ctx.textBaseline = 'top';
-    ctx.font = '600 12px "Space Grotesk", sans-serif';
-    ctx.fillStyle = oklch(0.93, 0.03, H, 0.92);
+    ctx.font = '600 14px "Space Grotesk", sans-serif';
+    ctx.fillStyle = oklch(0.95, 0.03, H, 0.95);
     const label = a.scope.dimension === 'root' ? 'Everything' : short(a.scope.value === 'other' ? a.scope.description.split(' · ').pop() ?? 'other' : labelVal(a));
     ctx.fillText(label, 0, kr * 1.08 + 5);
     if (kr > 30 || qLeaf || this.hover === n.id) {
-      ctx.font = '400 10.5px "JetBrains Mono", monospace';
-      ctx.fillStyle = oklch(0.75, 0.03, H, 0.7);
-      ctx.fillText(`${(a.tokens / 1000).toFixed(1)}k · ${a.owner.split(' ')[0]}`, 0, kr * 1.08 + 21);
+      ctx.font = '400 12px "JetBrains Mono", monospace';
+      ctx.fillStyle = oklch(0.8, 0.03, H, 0.78);
+      ctx.fillText(`${(a.tokens / 1000).toFixed(1)}k · ${a.owner.split(' ')[0]}`, 0, kr * 1.08 + 23);
     }
     ctx.restore();
 
@@ -633,8 +642,8 @@ export class Scene {
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = onPath ? oklch(0.9, 0.15, 85) : oklch(0.78, n.chroma, n.hue, 0.95); ctx.fill();
     ctx.save(); ctx.translate(x, y); ctx.scale(1 / k, 1 / k);
-    ctx.font = '500 10px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
-    ctx.fillStyle = oklch(0.8, 0.03, n.hue, 0.65);
+    ctx.font = '500 11.5px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = oklch(0.82, 0.03, n.hue, 0.72);
     if (a.agent_id === 'A0' || onPath || this.hover === n.id) {
       const lab = a.agent_id === 'A0' ? 'A0 · root' : `${a.agent_id} · ${short(labelVal(a), 14)}`;
       ctx.fillText(lab, 0, -r * k - 8);
@@ -701,6 +710,12 @@ export class Scene {
   }
 }
 
+function ellipsize(ctx: CanvasRenderingContext2D, s: string, w: number) {
+  if (ctx.measureText(s).width <= w) return s;
+  let t = s;
+  while (t.length > 4 && ctx.measureText(t + '…').width > w) t = t.slice(0, -1);
+  return t + '…';
+}
 function measure(ctx: CanvasRenderingContext2D, s: string, font: string) {
   const f = ctx.font; ctx.font = font; const w = ctx.measureText(s).width; ctx.font = f; return w;
 }

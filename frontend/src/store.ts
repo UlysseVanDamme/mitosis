@@ -66,6 +66,8 @@ const listeners = new Set<() => void>();
 const eventListeners = new Set<(e: MitosisEvent, s: AppState) => void>();
 let logId = 0;
 let toastId = 0;
+let lastConflictToast = 0;
+const CONFLICT_KIND: Record<string, string> = { forecast_vs_final: 'Forecast vs final', temporal_supersession: 'Superseded', scope_difference: 'Scope difference', true_contradiction: 'Contradiction' };
 
 export function getState() { return state; }
 function emit() { version++; listeners.forEach((l) => l()); }
@@ -81,9 +83,9 @@ export function patch(p: Partial<AppState>) { state = { ...state, ...p }; emit()
 
 export function pushToast(t: Omit<Toast, 'id'>) {
   const toast = { ...t, id: ++toastId };
-  state = { ...state, toasts: [...state.toasts, toast].slice(-4) };
+  state = { ...state, toasts: [...state.toasts, toast].slice(-2) };
   emit();
-  setTimeout(() => { state = { ...state, toasts: state.toasts.filter((x) => x.id !== toast.id) }; emit(); }, 5200);
+  setTimeout(() => { state = { ...state, toasts: state.toasts.filter((x) => x.id !== toast.id) }; emit(); }, 4200);
 }
 
 function log(s: AppState, e: MitosisEvent, text: string, tone: LogEntry['tone']) {
@@ -256,8 +258,13 @@ export function applyEvent(e: MitosisEvent) {
   eventListeners.forEach((l) => l(e, state));
   emit();
 
-  if (e.type === 'conflict_detected') {
-    pushToast({ tone: 'conflict', title: `Conflict in ${e.agent_id}`, body: e.conflict.summary });
+  if (e.type === 'conflict_detected' && !state.activeQueryId) {
+    // Throttle: a burst of conflicts should read as a pulse, not a wall. The headline kind always shows.
+    const t = Date.now();
+    if (e.conflict.kind === 'forecast_vs_final' || t - lastConflictToast > 2600) {
+      lastConflictToast = t;
+      pushToast({ tone: 'conflict', title: `${CONFLICT_KIND[e.conflict.kind] ?? 'Conflict'} · ${e.agent_id}`, body: e.conflict.summary });
+    }
   }
 }
 

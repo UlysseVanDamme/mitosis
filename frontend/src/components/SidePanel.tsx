@@ -112,10 +112,10 @@ export function Ticker() {
   return (
     <div className="ticker" aria-live="polite">
       <div className="ticker-h">Reading</div>
-      {s.recent.slice(0, 5).map((id, i) => {
+      {s.recent.slice(0, 4).map((id, i) => {
         const d = getState().docs.get(id);
         return (
-          <div key={id} className="tick" style={{ opacity: 1 - i * 0.19 }}>
+          <div key={id} className="tick" style={{ opacity: 1 - i * 0.22 }}>
             <i style={{ background: srcColor(d?.source_type ?? '') }} />
             <span className="tick-src">{d?.source_type}</span>
             <span className="tick-t">{d?.title ?? id}</span>

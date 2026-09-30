@@ -10,6 +10,7 @@ export function App() {
   const sceneRef = useRef<Scene | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const active = useStore((s) => s.activeQueryId);
+  const ingesting = useStore((s) => s.ingesting);
 
   useEffect(() => {
     const c = canvasRef.current!;
@@ -53,7 +54,7 @@ export function App() {
         <canvas ref={canvasRef} className="dish" />
         <Ticker />
         <Toasts />
-        {!active && <Legend />}
+        {!active && !ingesting && <Legend />}
         <AnswerSheet ref={sheetRef} />
         <Hint />
       </main>
