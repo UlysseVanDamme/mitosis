@@ -28,6 +28,9 @@ class EventHub:
         self.subscribers: set[asyncio.Queue] = set()
         self.snapshot_fn: Optional[Callable[[], dict]] = None
         self.history: list[dict] = []  # in-memory copy, handy for tests
+        # Replay rebuild: the engine re-ingests silently (warm LLM cache) while a recording animates the UI,
+        # so live queries/verify after a replay hit real state. Muted until the rebuild's ingest_done.
+        self.muted = False
 
     def rotate_log(self) -> None:
         """Called on reset: keep the previous run as events.prev.jsonl."""
@@ -35,8 +38,15 @@ class EventHub:
             self.log_path.replace(self.log_path.with_name("events.prev.jsonl"))
         self.history = []
 
+    LIVE_TYPES = frozenset({"query_started", "query_routed", "leaf_answer", "query_answer", "baseline_answer",
+                            "conflict_verified", "query_error"})
+
     def publish(self, type_: str, log: bool = True, **payload: Any) -> dict:
         ev = {"type": type_, "ts": payload.pop("ts", None) or time.time(), **_jsonable(payload)}
+        if self.muted and not ev.get("replayed") and type_ not in self.LIVE_TYPES:
+            if type_ == "ingest_done":
+                self.muted = False
+            return ev
         if log:
             self.history.append(ev)
             try:

@@ -81,6 +81,7 @@ class VerifyReq(_Req):  # a body "by" field is ignored: the verifier is the toke
 class ReplayReq(_Req):
     file: Optional[str] = Field(default=None, max_length=512)
     speed: float = Field(default=1.0, gt=0, le=100)
+    rebuild: bool = True  # silently re-ingest the corpus (warm cache) so the engine matches the recording
 
 
 class TrustCheckReq(_Req):
@@ -451,6 +452,7 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
     @api.post("/reset")
     async def reset(user: User = Depends(admin_only)):
         admin_rl.check(user.username)
+        sw().hub.muted = False
         await sw().reset()
         qowners.clear()
         audit("reset", user.username)
@@ -464,6 +466,7 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
             raise HTTPException(404, "corpus empty or not found")
         ids = [i for i in (req.doc_ids or order) if i in docs]
         s = sw()
+        s.hub.muted = False
         delay = req.delay_ms
         if delay is None:  # UI button: pace fake runs so the splits are watchable
             delay = int(os.environ.get("MITOSIS_DELAY_MS", "400" if getattr(s.llm, "is_fake", False) else "0"))
@@ -514,6 +517,13 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         s = sw()
         p = _recording(req.file)
         n = sum(1 for ln in p.open() if ln.strip())
+        if req.rebuild:
+            docs, order = load_corpus(None)
+            if docs:
+                s.hub.muted = True
+                await s.reset()
+                qowners.clear()
+                s.enqueue([docs[i] for i in order if i in docs], delay_ms=0)
         t = asyncio.create_task(_replay(s.hub, p, req.speed))
         s.bg.add(t)
         t.add_done_callback(s.bg.discard)
