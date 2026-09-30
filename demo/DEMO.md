@@ -52,6 +52,12 @@ uv run demo/run_demo.py --record stage           # full run + save events to dem
 
 It prints the live event log (splits in yellow panels, conflicts in red) and each answer next to the plain RAG answer.
 
+## Stage mode recording
+
+`demo/recordings/golden.jsonl` is a real `claude-cli` run (102 docs + golden questions). Space bar in Stage mode (or the Replay button) calls `/api/replay`, which prefers `golden.jsonl`. The replay also resets the engine and re-ingests the corpus silently from the warm LLM cache (`backend/state/llm_cache`), so the live question and Verify that follow run against real state with the same conflict ids. Start the backend with `MITOSIS_PROVIDER=claude-cli` for stage; with the fake provider the replay still animates, but live answers come from the fake engine.
+
+Re-record: start the backend, then `uv run demo/run_demo.py --record golden`.
+
 ## Fallback plan
 
 | Problem | Do |
