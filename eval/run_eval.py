@@ -45,6 +45,14 @@ class Api:
         self.auth = True
 
     def call(self, method, path, body=None, user=None):
+        for attempt in range(6):  # back off on the API rate limit (HTTP 429)
+            code, res = self._call(method, path, body, user)
+            if code != 429:
+                return code, res
+            time.sleep(min(2 ** attempt, 20))
+        return code, res
+
+    def _call(self, method, path, body=None, user=None):
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(self.base + path, data=data, method=method)
         req.add_header("Content-Type", "application/json")
