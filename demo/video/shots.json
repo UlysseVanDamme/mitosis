@@ -1,0 +1,68 @@
+{
+  "_doc": "Single source of truth for the demo video: shot order, planned length (seconds) and voice-over cues (seconds from the start of the shot). record.py holds each shot for exactly `dur`, assemble.sh cuts every clip to `dur` and builds voiceover.srt from the cues. Order and wording follow docs/PRESENTATION.md; numbers are from eval/results.md. Total must stay under 175 s (2:55).",
+  "shots": [
+    {
+      "id": "a_compare",
+      "title": "Dead, connected, alive",
+      "dur": 53,
+      "vo": [
+        [0.0, 8.0, "Sofie just inherited the Brouwerij Van Dessel portfolio. The first client question is already waiting: which index applies in January?"],
+        [8.0, 16.5, "Classic AI search finds three documents and a Teams message, blends them, and answers with confidence. The documents stay dead until someone asks."],
+        [16.7, 31.0, "A knowledge graph connects them. Better, but it is built once and questioned later, so nobody notices that 2.13 and 2.21 percent cannot both be true."],
+        [31.2, 51.5, "Mitosis is alive. It reads everything first, divides into specialists as it learns, and notices the contradiction by itself, before anyone asks. Then it tells the one person who can settle it."]
+      ]
+    },
+    {
+      "id": "b_stage",
+      "title": "Stage mode: read, divide, catch",
+      "dur": 40,
+      "vo": [
+        [0.5, 12.0, "This is our real run on 102 payroll documents. It starts as one agent, and when it knows too much to keep in mind at once, it divides like a cell."],
+        [12.0, 23.5, "By joint committee, by client, by country. It writes down why. Nobody drew this map by hand."],
+        [23.5, 39.5, "Each specialist keeps its whole domain in view, so it catches contradictions while it is still reading: a forecast of 2.13 percent against the final 2.21."]
+      ]
+    },
+    {
+      "id": "c_explore",
+      "title": "Sofie: handover and answer",
+      "dur": 28,
+      "vo": [
+        [0.0, 10.0, "Sofie doesn't start by searching. She starts with what she needs to know about Van Dessel, each contradiction with its evidence."],
+        [10.0, 27.5, "Then she asks. The answer is two lines, with why it trusts it, what it ignored and who owns the rule. The plain chatbot answer is shown crossed out."]
+      ]
+    },
+    {
+      "id": "d_jan_verify",
+      "title": "Jan verifies",
+      "dur": 16,
+      "vo": [
+        [0.0, 15.5, "Jan Peeters owns PC 200. The swarm sends him only the questions he can settle, and shows what they affect. He confirms in one click."]
+      ]
+    },
+    {
+      "id": "e_sofie_green",
+      "title": "Sofie re-asks: verified",
+      "dur": 12,
+      "vo": [
+        [0.0, 11.5, "Sofie asks again. Now the answer is green, verified by Jan, for everyone who asks next."]
+      ]
+    },
+    {
+      "id": "f_client",
+      "title": "Van Dessel client view",
+      "dur": 16,
+      "vo": [
+        [0.0, 15.5, "Van Dessel's HR admin asks the same question and gets the same trusted answer. Other clients' data never appears, and personal data is redacted before any model sees it."]
+      ]
+    },
+    {
+      "id": "g_end",
+      "title": "End card",
+      "dur": 8,
+      "vo": [
+        [0.0, 4.5, "On 102 documents: 19 of 21 planted contradictions caught, zero access leaks."],
+        [4.5, 7.8, "Mitosis. Find it. Understand it. Trust it."]
+      ]
+    }
+  ]
+}
