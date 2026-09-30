@@ -314,14 +314,19 @@ def fake_split(docs: list[Document], tokens: dict[str, int]) -> Optional[dict]:
     return {"dimension": dim, "reason": reason, "groups": groups}
 
 
+# a claim whose own sentence calls the figure a forecast (e.g. a config override loaded from a forecast)
+_FORECASTY = re.compile(r"forecast|prognos|raming|verwacht|expected|estimat|prévision|prevision", re.I)
+
+
 def classify_conflict(e: Claim, n: Claim, docs: dict[str, Document]) -> dict:
     de, dn = docs.get(e.doc_id), docs.get(n.doc_id)
     te, tn = (de.source_type if de else ""), (dn.source_type if dn else "")
     date_e, date_n = (de.date if de else ""), (dn.date if dn else "")
     rank = {"law": 5, "official": 5, "cao": 4, "policy": 4, "faq": 3, "news": 3, "email": 2, "ticket": 2, "slack": 1, "forecast": 0}
-    if "forecast" in (te, tn) and te != tn:
+    fe, fn = te == "forecast" or _FORECASTY.search(e.quote or ""), tn == "forecast" or _FORECASTY.search(n.quote or "")
+    if bool(fe) != bool(fn):
         kind = "forecast_vs_final"
-        win = e if tn == "forecast" else n
+        win = e if fn else n
         res = f"Official figure {win.value} wins over the forecast; forecasts are superseded once the final figure is published."
         human = False
     elif (e.scope.client or None) != (n.scope.client or None) or (e.scope.pc or None) != (n.scope.pc or None):

@@ -126,7 +126,8 @@ class Swarm:
         self._ingesting = False
         self.router = Router()
         self._claim_vecs: dict[str, object] = {}
-        self._qvecs: dict[str, object] = {}  # quarantined docs: kept out of the router, used only to flag gaps
+        self._qvecs: dict[str, object] = {}
+        self._impacted: set[tuple[str, str]] = set()  # (doc_id, losing value) already reported  # quarantined docs: kept out of the router, used only to flag gaps
         root = Agent(agent_id=self._id("A"), scope=AgentScope(dimension="root", value="Everything",
                      description="Everything: one cell reading the whole corpus"),
                      owner="Knowledge desk", budget=self.budget, created_ts=time.time())
@@ -375,7 +376,8 @@ class Swarm:
             self.router.record(rinfo["router"], ms)
             self.hub.publish("routing_stats", **self.router.stats())
         size = tok.estimate(d.text)
-        for lid in leaf_ids:
+        cross = self._cross_candidates(new_claims, set(leaf_ids)) if new_claims else []
+        for n_leaf, lid in enumerate(leaf_ids):
             leaf = self.agents[lid]
             existing = [c for c in leaf.claims]
             leaf.doc_ids.append(d.doc_id)
@@ -384,8 +386,9 @@ class Swarm:
             self.hub.publish("doc_absorbed", doc_id=d.doc_id, agent_id=lid, tokens=leaf.tokens, budget=leaf.budget,
                              claims=len(new_claims))
             self._emit_agent(leaf)
-            if new_claims and existing:
-                self._spawn_conflict_check(leaf, existing, new_claims)
+            x = cross if n_leaf == 0 else []  # one cross-agent check per doc is enough
+            if new_claims and (existing or x):
+                self._spawn_conflict_check(leaf, existing, new_claims, x)
             if leaf.tokens > leaf.budget:
                 await self._split(leaf)
 
@@ -409,8 +412,41 @@ class Swarm:
                     break
         return out
 
-    def _spawn_conflict_check(self, leaf: Agent, existing: list[Claim], new: list[Claim]) -> None:
-        cands = self._conflict_candidates(existing, new)
+    def _holders(self) -> dict[str, str]:
+        """claim_id -> leaf that owns it (not as context)."""
+        return {c.claim_id: a.agent_id for a in self.leaves() for c in a.claims if not c.context}
+
+    def _cross_candidates(self, new: list[Claim], exclude: set[str]) -> list[Claim]:
+        """X1: System 1 over the global claim index. For each new claim, the most similar claims held by
+        OTHER leaves (different value, same fact by char-n-gram similarity or word overlap) join the check,
+        so a contradiction is caught even when the two sources live in different specialists."""
+        holders = self._holders()
+        pool = [c for cid, c in self.claims.items() if holders.get(cid) and holders[cid] not in exclude]
+        if not pool:
+            return []
+        best: dict[str, float] = {}
+        for n in new:
+            nv = self._claim_vec(n)
+            scored = []
+            for c in pool:
+                if c.doc_id == n.doc_id or norm(c.value) == norm(n.value):
+                    continue
+                sim = float(self._claim_vec(c) @ nv)
+                if _similar(c, n):
+                    sim = max(sim, CLAIM_SIM)
+                if sim >= CLAIM_SIM:
+                    scored.append((sim, c.claim_id))
+            scored.sort(reverse=True)
+            for sim, cid in scored[:CROSS_TOP_K]:
+                best[cid] = max(best.get(cid, 0.0), sim)
+        ids = sorted(best, key=lambda i: -best[i])[:CROSS_TOP_K * 2]
+        return [self.claims[i] for i in ids]
+
+    def _spawn_conflict_check(self, leaf: Agent, existing: list[Claim], new: list[Claim],
+                              cross: Optional[list[Claim]] = None) -> None:
+        cands = self._conflict_candidates(existing, new) if existing else []
+        have = {c.claim_id for c in cands}
+        cands += [c for c in cross or [] if c.claim_id not in have]
         if not cands:
             return
         focus = [*(c.doc_id for c in cands), *(c.doc_id for c in new)]
@@ -449,9 +485,150 @@ class Swarm:
                      winning_claim_id=win, status="open" if f.get("needs_human") or not win else "auto_resolved",
                      claims=[self.claims[i] for i in ids])
         self._place_conflict(c)
+        self._enrich(c)
         self.conflicts[c.conflict_id] = c
         self.hub.publish("conflict_detected", conflict=c, agent_id=c.agent_id)
+        self._sync_inbox()
+        if c.status != "open":
+            self._detect_impact(c)
         return c
+
+    # ------------------------------------------------------------------ wave 3: enrichment
+    def _enrich(self, c: Conflict) -> None:
+        """agent_ids / cross_agent, side cards with wins, hero flag, one-line plain verdict. No LLM."""
+        holders = self._holders()
+        ids = list(dict.fromkeys(h for h in (holders.get(i) for i in c.claim_ids) if h))
+        if ids and not c.agent_ids:  # holders at detection time (claims may move later with splits)
+            c.agent_ids = ids
+        c.cross_agent = len(set(c.agent_ids)) > 1
+        c.sides = []
+        for i in c.claim_ids:
+            cl = self.claims[i]
+            d = self.docs.get(cl.doc_id)
+            c.sides.append({"claim_id": i, "value": cl.value, "doc_id": cl.doc_id,
+                            "source": (d.source or d.title) if d else "", "title": d.title if d else "",
+                            "source_type": d.source_type if d else "", "date": d.date if d else "",
+                            "language": d.language if d else None, "client": cl.scope.client,
+                            "pc": cl.scope.pc, "country": cl.scope.country, "agent_id": holders.get(i),
+                            "wins": c.winning_claim_id == i})
+        c.plain_summary = _plain_summary(c)
+        c.hero = self._is_hero(c)
+
+    def _is_hero(self, c: Conflict) -> bool:
+        """Spotlight-worthy (stage mode): forecast vs final, client CAO overriding the sector, policy vs chat,
+        cross-lingual. At most one hero per fact (subject + attribute), and HERO_MAX in total."""
+        types = {s["source_type"] for s in c.sides}
+        langs = {s["language"] for s in c.sides if s["language"]}
+        win = next((s for s in c.sides if s["wins"]), None)
+        if win is None or win["source_type"] not in STRONG | PUBLISHER_TYPES:
+            return False  # a spotlight must end on an authoritative answer
+        client_cao = any(s["source_type"] == "cao" and s["client"] for s in c.sides) and \
+            any(not s["client"] for s in c.sides)
+        rule = (c.kind == "forecast_vs_final" or (c.kind == "scope_difference" and client_cao)
+                or (c.kind == "true_contradiction" and types & {"slack", "teams"} and types & {"policy", "official", "law"})
+                or len(langs) > 1)
+        if not rule:
+            return False
+        key = frozenset((norm(self.claims[i].subject), norm(self.claims[i].attribute)) for i in c.claim_ids)
+        others = [o for o in self.conflicts.values() if o.hero and o.conflict_id != c.conflict_id]
+        if len(others) >= HERO_MAX:
+            return False
+        for o in others:
+            if key & frozenset((norm(self.claims[i].subject), norm(self.claims[i].attribute)) for i in o.claim_ids) \
+                    and o.kind == c.kind:
+                return False
+        return True
+
+    def _sync_inbox(self) -> None:
+        """X2: Agent.inbox = open conflicts held by that agent; emit agent_updated where it changed."""
+        counts: dict[str, int] = {}
+        for c in self.conflicts.values():
+            if c.status == "open":
+                counts[c.agent_id] = counts.get(c.agent_id, 0) + 1
+        for a in self.agents.values():
+            n = counts.get(a.agent_id, 0)
+            if a.inbox != n:
+                a.inbox = n
+                self._emit_agent(a)
+
+    # ------------------------------------------------------------------ wave 3: impact
+    def _detect_impact(self, c: Conflict) -> list[dict]:
+        """X3: once a conflict has a winner, find operational docs (client configs/CAOs, tickets, emails, chat,
+        internal notes) that still rely on the losing value in a compatible scope. Deterministic, no LLM."""
+        w = self.claims.get(c.winning_claim_id or "")
+        if w is None:
+            return []
+        win_num = _num(w.value)
+        losers = [self.claims[i] for i in c.claim_ids if i != w.claim_id and _num(self.claims[i].value) != win_num
+                  and _unit(self.claims[i].value) == _unit(w.value)]
+        if not losers or c.kind == "scope_difference":  # both hold in their own scope: nothing is wrong downstream
+            return []
+        affected: dict[str, dict] = {}
+        for lo in losers:
+            lnum = _num(lo.value)
+            if not re.search(r"\d", lnum):
+                continue
+            fam = {norm(lo.attribute), norm(w.attribute)}
+            for d in self.docs.values():
+                if d.quarantined or d.doc_id == w.doc_id or d.doc_id in affected or d.source_type not in IMPACT_TYPES:
+                    continue
+                if (w.scope.pc and d.pc and d.pc != w.scope.pc) or (w.scope.country and d.country and d.country != w.scope.country):
+                    continue
+                nums = {_num(x) for x in _NUM_RE.findall(d.text or "")}
+                if lnum not in nums or win_num in nums:  # mentions the new value too: already knows
+                    continue
+                dclaims = [x for x in self.claims.values() if x.doc_id == d.doc_id]
+                same_fact = any(_num(x.value) == lnum and (norm(x.attribute) in fam or _similar(x, lo)
+                                or float(self._claim_vec(x) @ self._claim_vec(lo)) >= CLAIM_SIM) for x in dclaims)
+                if not same_fact and not (d.topic and norm(d.topic) in norm(f"{lo.subject} {lo.attribute}")):
+                    continue
+                what = {"cao": "client config" if "config" in d.title.lower() else "client CAO", "ticket": "open ticket",
+                        "email": "email", "slack": "chat message", "teams": "chat message", "policy": "internal note",
+                        "faq": "FAQ page"}.get(d.source_type, d.source_type)
+                affected[d.doc_id] = {"doc_id": d.doc_id, "title": d.title, "client": d.client, "source_type": d.source_type,
+                                      "owner": doc_owner(d), "kind": what,
+                                      "why": f"{what} still uses {lo.value}; {w.value} replaces it"}
+        if not affected:
+            return []
+        lo = losers[0]
+        items = sorted(affected.values(), key=lambda a: (a["source_type"] != "cao", a["doc_id"]))
+        c.impacts = items
+        fresh = {(a["doc_id"], _num(lo.value)) for a in items} - self._impacted
+        if not fresh:  # already reported via another conflict about the same value
+            return items
+        self._impacted |= fresh
+        summary = impact_summary(items, lo.value, w.value)
+        self.hub.publish("impact_detected", conflict_id=c.conflict_id, agent_id=c.agent_id, losing_value=lo.value,
+                         winning_value=w.value, affected=items, summary=summary,
+                         source_doc_ids=[self.claims[i].doc_id for i in c.claim_ids])
+        return items
+
+    def inbox(self, user=None, owner: Optional[str] = None) -> dict:
+        """Open conflicts (owner's first) plus every detected impact, filtered by the caller's access."""
+        p = principal(user)
+        items = []
+        for c in self.conflicts.values():
+            if not self._visible_conflict(c, p):
+                continue
+            a = self.agents.get(c.agent_id)
+            cd = self.conflict_view(c, p)
+            cd["owner"] = a.owner if a else None
+            cd["mine"] = bool(owner and a and a.owner.lower().startswith(owner.lower()))
+            items.append(cd)
+        open_ = [x for x in items if x["status"] == "open"]
+        open_.sort(key=lambda x: (not x["mine"], not x["hero"], x["conflict_id"]))
+        impacts = [{"conflict_id": x["conflict_id"], "summary": x["plain_summary"], "status": x["status"],
+                    "affected": x["impacts"]} for x in items if x["impacts"]]
+        return {"conflicts": open_, "impacts": impacts, "open": len(open_),
+                "mine": sum(1 for x in open_ if x["mine"])}
+
+    def conflict_view(self, c: Conflict, p) -> dict:
+        """A conflict as this caller may see it: impacts pointing at docs outside their access are dropped."""
+        out = c.model_dump()
+        if out["impacts"]:
+            out["impacts"] = [i for i in out["impacts"] if i["doc_id"] in self.docs
+                              and can_see(p, self.docs[i["doc_id"]].access_group)]
+        return out
 
     def _holder(self, claim_id: str) -> Optional[Agent]:
         for a in self.leaves():
@@ -511,7 +688,7 @@ class Swarm:
                                  values=vals),
                 doc_ids=list(ids), claims=[c for c in agent.claims if c.doc_id in set(ids) and not c.context],
                 tokens=sum(sizes[i] for i in ids), budget=self.budget,
-                owner=g.get("owner") or "Knowledge desk", created_ts=time.time())
+                owner=_named_owner([by_id[i] for i in ids], g.get("owner") or "Knowledge desk"), created_ts=time.time())
             children.append(child)
             self.agents[child.agent_id] = child
             self.router.rebuild(child.agent_id, ids)
@@ -526,6 +703,7 @@ class Swarm:
             if c.agent_id == agent.agent_id:
                 self._place_conflict(c)
         self.hub.publish("agent_split", split=split, parent=agent, children=children)
+        self._sync_inbox()
         for ch in children:
             if ch.tokens > ch.budget:
                 await self._split(ch)
@@ -651,7 +829,7 @@ class Swarm:
             cdocs = {cl.doc_id for cl in c.claims}
             if (c.agent_id in leaf_ids and (cdocs & cited or qw & set(words(c.summary)))) or cdocs & set(extra_docs):
                 seen.add(c.conflict_id)
-                out.append(c.model_dump())
+                out.append(self.conflict_view(c, p))
         return out
 
     async def _query(self, qid: str, question: str, p: dict) -> dict:
@@ -675,7 +853,7 @@ class Swarm:
             vis_ids = {d.doc_id for d in docs}
             claims = [c for c in a.claims if c.doc_id in vis_ids]
             facts = [f.model_dump() for f in self.facts if f.agent_id == lid or set(f.sources) & vis_ids]
-            confs = [c.model_dump() for c in self.conflicts.values() if c.agent_id == lid and self._visible_conflict(c, p)]
+            confs = [self.conflict_view(c, p) for c in self.conflicts.values() if c.agent_id == lid and self._visible_conflict(c, p)]
             r = await self.llm.answer_leaf(question, a.scope.description, docs, claims, facts, confs)
             cites = [c for c in dict.fromkeys(r.get("citations") or []) if c in vis_ids]
             la = {"agent_id": lid, "scope": a.scope.description, "owner": a.owner, "answer": r.get("answer", ""),
@@ -898,9 +1076,12 @@ class Swarm:
                             + (f", per {d.source} {d.date}" if d else ""),
                             sources=[w.doc_id], verified_by=by, ts=time.time(), conflict_id=conflict_id)
         self.facts.append(fact)
+        self._enrich(c)
         self.hub.publish("conflict_verified", conflict=c, fact=fact)
         if c.agent_id in self.agents:
             self._emit_agent(self.agents[c.agent_id])
+        self._sync_inbox()
+        self._detect_impact(c)
         self.save_snapshot()
         return fact
 
@@ -948,6 +1129,62 @@ COUNTRY_NAMES = {"BE": ["belgium", "belgië", "belgie", "belgique", "belgian", "
                  "LU": ["luxembourg", "luxemburg", "luxembourgish"],
                  "FR": ["france", "frankrijk"], "DE": ["germany", "duitsland", "allemagne"]}
 QUARANTINE_GAP_SIM = float(os.environ.get("MITOSIS_QUARANTINE_GAP_SIM", "0.12"))
+CROSS_TOP_K = int(os.environ.get("MITOSIS_CROSS_TOP_K", "8"))
+HERO_MAX = int(os.environ.get("MITOSIS_HERO_MAX", "6"))
+IMPACT_TYPES = {"cao", "ticket", "email", "slack", "teams", "policy", "faq"}
+_NUM_RE = re.compile(r"\d+(?:[.,]\d+)?")
+_TYPE_WORD = {"forecast": "forecast", "slack": "chat", "teams": "chat", "ticket": "ticket", "email": "email",
+              "policy": "policy", "cao": "client CAO", "official": "official figure", "law": "law", "news": "news",
+              "faq": "FAQ"}
+
+
+def _plain_summary(c: Conflict) -> str:
+    """One short verdict line for stage mode, from kind + sides (no LLM)."""
+    win = next((s for s in c.sides if s["wins"]), None)
+    lose = next((s for s in c.sides if not s["wins"]), None)
+    langs = [s["language"] for s in c.sides if s["language"]]
+    if c.kind == "forecast_vs_final":
+        txt = "final figure replaces forecast"
+    elif c.kind == "temporal_supersession":
+        txt = "newer rule replaces older one"
+    elif c.kind == "scope_difference":
+        cl = next((s["client"] for s in c.sides if s["client"] and s["source_type"] == "cao"), None)
+        txt = f"{cl} CAO overrides the sector rule" if cl else "both hold, each in its own scope"
+    elif win and lose and c.status != "open":
+        txt = f"{_TYPE_WORD.get(win['source_type'], win['source_type'])} beats {_TYPE_WORD.get(lose['source_type'], lose['source_type'])}"
+    else:
+        txt = "sources disagree: an owner must decide"
+    if len(set(langs)) > 1:
+        txt += f" ({' vs '.join(dict.fromkeys(x.upper() for x in langs))})"
+    return txt
+
+
+def _named_owner(docs: list[Document], persona: str) -> str:
+    """X2: a cell is owned by the person accountable for most of its documents (from the corpus), so the
+    inbox reaches a real colleague; the planner's persona only supplies the role."""
+    counts: dict[str, int] = {}
+    for d in docs:
+        if d.owner:
+            counts[d.owner] = counts.get(d.owner, 0) + 1
+    if not counts:
+        return persona
+    name = max(sorted(counts), key=counts.__getitem__)
+    role = persona[persona.find("("):] if "(" in persona else ""
+    return f"{name} {role}".strip()
+
+
+def _unit(v: str) -> str:
+    v = (v or "").lower()
+    return "%" if "%" in v else ("eur" if ("eur" in v or "€" in v) else "")
+
+
+def impact_summary(affected: list[dict], losing: str, winning: str) -> str:
+    if not affected:
+        return ""
+    a = affected[0]
+    who = f"{a['client']} {a['kind']}" if a.get("client") else a["title"]
+    more = f" (+{len(affected) - 1} more)" if len(affected) > 1 else ""
+    return f"{who} still uses {losing}{more} -> fix to {winning} before the payroll run"
 
 
 def doc_owner(d: Document) -> Optional[str]:

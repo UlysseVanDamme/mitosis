@@ -73,6 +73,7 @@ class Agent(BaseModel):
     owner: str = "Knowledge desk"
     children: list[str] = Field(default_factory=list)
     created_ts: float = 0.0
+    inbox: int = 0  # open conflicts held here that need a human decision
 
 
 class Split(BaseModel):
@@ -97,6 +98,13 @@ class Conflict(BaseModel):
     status: Literal["open", "auto_resolved", "verified"] = "open"
     verified_by: Optional[str] = None
     claims: list[Claim] = Field(default_factory=list)  # denormalised for UI cards
+    # wave 3: cross-agent detection, stage-mode spotlight, plain verdict, side cards, downstream impact
+    cross_agent: bool = False  # the claims came from different agents
+    agent_ids: list[str] = Field(default_factory=list)  # agents holding the claims
+    hero: bool = False
+    plain_summary: str = ""
+    sides: list[dict] = Field(default_factory=list)  # {claim_id, value, source, source_type, date, doc_id, wins, ...}
+    impacts: list[dict] = Field(default_factory=list)  # docs still relying on the losing value
 
 
 class VerifiedFact(BaseModel):
