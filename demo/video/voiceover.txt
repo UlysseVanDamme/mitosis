@@ -1,0 +1,19 @@
+[thoughtful] In the vast archives of a payroll company, knowledge lies scattered. [short pause] Documents. Tickets. Contracts. Messages in Slack. [long pause] [softly] Every one of them is dead. They cannot move. They cannot speak. They simply wait.
+
+[gravely] A single agent drifts in, but only when a question is asked. [short pause] It gathers the documents that merely look alike: a forecast of two point one three percent, an old policy, a rule from another country. [sighs] It cannot tell the old from the new. And it returns, confident, and wrong.
+
+[thoughtful] Some have tried to bind the dead together. A knowledge graph. [short pause] The forecast and the final figure, two point two one percent, now share a single thread. [whispers] Yet nothing checks it. Linked... but never compared.
+
+[curious] Why not grow one great agent, and feed it everything? [short pause] It swallows, and swallows. Its context window fills. The oldest memories slip away. [long pause] [gravely] And then, it bursts.
+
+[in awe] Nature solved this long ago. When a cell grows too full, it divides, well before it bursts. [slowly] It chooses a line of meaning, here the joint committee, sorts what it knows to either side, and splits in two. Each daughter keeps its whole domain in view. And it writes down why.
+
+[warmly] Now the stream of documents is no longer buried. It is absorbed. [short pause] Each specialist divides in its own time, some in two, some in four, some not at all, until a living colony knows payroll, client by client, country by country. [short pause] Nobody drew this map by hand.
+
+[whispers] Now watch closely. [short pause] Deep inside the PC 200 specialist, the final figure arrives, and the old forecast stirs. [gravely] A contradiction, caught while reading. Nobody asked. [short pause] The colony signals its keeper, Jan Peeters, on his phone. One tap. Verified.
+
+[thoughtful] When Sofie asks what Brouwerij Van Dessel should apply, her question travels straight to the specialists that know. [short pause] Two point two one percent, from the first of February, as their company agreement requires. Verified by Jan.
+
+[softly] In our trials, nineteen of twenty-one hidden contradictions surfaced on their own. A planted lie, hidden in a Slack message, was quarantined. And most routing needed no AI call at all.
+
+[long pause] [warmly] Knowledge, it seems, does not need to be searched. It needs to be alive. [short pause] Find it. Understand it. Trust it. [slowly] This is Mitosis.
