@@ -68,3 +68,20 @@ Generated 2026-09-30 21:05 against `http://127.0.0.1:8000`, provider `real`. 102
 | P19 | true_contradiction | yes | Teams chat: all 12 temporary unemployment days count vs policy v2 / handover note: 5 days |
 | P20 | scope_difference | yes | Van Dessel Nederland BV (NL): no equated absence days, 13th month 8.33% vs Belgian PC 200 rule (5 days equated) |
 | P21 | forecast_vs_final | yes | Dutch team note: PC 200 2,13% (forecast) vs French official release: 2,21 % final |
+
+## Conflict precision (hand-labelled sample)
+
+`eval/precision.py` takes the conflicts from a later state snapshot (`eval/data/conflicts_snapshot.json`: 102 docs, 28 agents, 44 conflicts; not the 96-conflict run above), drops the 14 that match a planted conflict, and samples 20 of the other 30 with a fixed seed. Labels and reasons are in `eval/precision_sample.md`.
+
+| Label | Count |
+|---|---|
+| real (sources disagree, someone must pick) | 10 |
+| scope-difference (both hold, for different scopes) | 9 |
+| false (not a conflict) | 1 |
+| **Precision (real or scope-difference)** | **19/20** |
+
+Caveat: 14 of the 20 restate a planted conflict through another document pair. The Van Dessel CAO scope alone shows up 8 times. They are correct but redundant, so the list needs merging per topic before it reaches an owner. This section is appended by hand; `run_eval.py` does not write it.
+
+## Contradiction questions
+
+On the four golden questions where sources contradict each other (G03, G06, G13, G17), Mitosis is correct on 4/4 and plain RAG on 0/4 (see the per-question table). On G13 plain RAG repeats the Teams claim that all 12 days count.
