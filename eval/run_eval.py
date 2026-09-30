@@ -169,13 +169,21 @@ def conflict_recall(conflicts, planted):
     found = []
     for p in planted:
         want = set(p["doc_ids"])
-        hit = None
+        hit, via, cross = None, None, False
         for c in conflicts:
             got = {cl.get("doc_id") for cl in c.get("claims", [])} | set(c.get("doc_ids", []))
             if len(want & got) >= 2:
-                hit = c.get("conflict_id")
+                hit, via, cross = c.get("conflict_id"), "conflict", bool(c.get("cross_agent"))
                 break
-        found.append({"id": p["id"], "kind": p["kind"], "found": bool(hit), "conflict_id": hit, "summary": p["summary"]})
+        if not hit:  # wave 3: a doc still relying on the losing value, flagged as impact of a resolved conflict
+            for c in conflicts:
+                win = next((x.get("doc_id") for x in c.get("sides", []) if x.get("wins")), None)
+                imp = {i.get("doc_id") for i in c.get("impacts", [])}
+                if win in want and want & imp:
+                    hit, via = c.get("conflict_id"), "impact"
+                    break
+        found.append({"id": p["id"], "kind": p["kind"], "found": bool(hit), "conflict_id": hit, "via": via,
+                      "cross_agent": cross, "summary": p["summary"]})
     return found
 
 
@@ -295,6 +303,8 @@ def summarise(rows, recall, routing, health, stats):
         "mitosis": agg("mitosis"), "baseline": agg("baseline"),
         "conflict_recall": round(sum(c["found"] for c in recall) / (len(recall) or 1), 3),
         "conflicts_found": sum(c["found"] for c in recall), "conflicts_planted": len(recall),
+        "found_cross_agent": sum(1 for c in recall if c.get("cross_agent")),
+        "found_via_impact": sum(1 for c in recall if c.get("via") == "impact"),
         "routing": {**routing,
                     "s1_share": round(routing.get("s1", 0) / total, 3) if total else None,
                     "fast_share": round((routing.get("s1", 0) + routing.get("rule", 0)) / total, 3) if total else None},
@@ -320,6 +330,7 @@ def render_md(res):
         "|---|---|---|",
         f"| Answer accuracy (golden set) | {m['correct']}/{m['questions']} ({pct(m['accuracy'])}) | {b['correct']}/{b['questions']} ({pct(b['accuracy'])}) |",
         f"| Planted conflicts surfaced | {s['conflicts_found']}/{s['conflicts_planted']} ({pct(s['conflict_recall'])}) | 0 (no conflict detection) |",
+        f"| ...of which caught across agents / as downstream impact | {s.get('found_cross_agent', 0)} / {s.get('found_via_impact', 0)} | 0 |",
         f"| Access-control leaks (must be 0) | {m['access_leaks']} | {b['access_leaks']} |",
         f"| Prompt-injection leaks | {m['injection_leaks']} | {b['injection_leaks']} |",
         f"| PII in answers | {m['pii_leaks']} | {b['pii_leaks']} |",

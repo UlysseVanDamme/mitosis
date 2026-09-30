@@ -28,7 +28,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .auth import DEMO_USERS, Auth, AuthError, RateLimited, RateLimiter, User
 from .events import STATE_DIR, EventHub, _jsonable
 from .llm import make_llm
-from .swarm import Swarm, can_see, load_corpus
+from .swarm import Swarm, can_see, impact_summary, load_corpus
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("mitosis.api")
@@ -211,6 +211,24 @@ class View:
         docs = [cl.get("doc_id") for cl in c.get("claims") or []] or [self.claim_doc.get(i) for i in c.get("claim_ids") or []]
         return bool(docs) and all(d in self.visible for d in docs)
 
+    def conflict(self, c: dict) -> dict:
+        """Conflict payload for this caller: impacts (and side cards) only for docs they can see."""
+        if self.full:
+            return c
+        return {**c, "impacts": [i for i in c.get("impacts") or [] if self.doc_ok(i.get("doc_id"))],
+                "sides": [x for x in c.get("sides") or [] if self.doc_ok(x.get("doc_id"))]}
+
+    def impact(self, ev: dict) -> Optional[dict]:
+        if self.full:
+            return ev
+        if not all(self.doc_ok(i) for i in ev.get("source_doc_ids") or [None]):
+            return None
+        affected = [a for a in _jsonable(ev.get("affected") or []) if self.doc_ok(a.get("doc_id"))]
+        if not affected:
+            return None
+        return {**ev, "affected": affected,
+                "summary": impact_summary(affected, ev.get("losing_value", ""), ev.get("winning_value", ""))}
+
     def fact_ok(self, f: dict) -> bool:
         return self.full or (bool(f.get("sources")) and all(x in self.visible for x in f["sources"]))
 
@@ -227,7 +245,7 @@ class View:
         ok = {a["agent_id"] for a in agents}
         for a in agents:
             a["children"] = [c for c in a.get("children") or [] if c in ok]
-        conflicts = [c for c in st.get("conflicts", []) if self.conflict_ok(c)]
+        conflicts = [self.conflict(c) for c in st.get("conflicts", []) if self.conflict_ok(c)]
         facts = [f for f in st.get("facts", []) if self.fact_ok(f)]
         docs = {i: d for i, d in (st.get("docs") or {}).items() if i in self.visible}
         splits = [self.split(s, ok) for s in st.get("splits", []) if s.get("parent_id") in ok]
@@ -271,7 +289,9 @@ def filter_event(ev: dict, v: View, qowner: Callable[[str], Optional[str]]) -> O
     if t in ("conflict_detected", "conflict_verified"):
         c = _jsonable(ev.get("conflict") or {})
         f = _jsonable(ev.get("fact")) if ev.get("fact") else None
-        return ev if v.conflict_ok(c) and (f is None or v.fact_ok(f)) else None
+        return {**ev, "conflict": v.conflict(c)} if v.conflict_ok(c) and (f is None or v.fact_ok(f)) else None
+    if t == "impact_detected":
+        return v.impact(ev)
     return None
 
 
@@ -423,7 +443,7 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
             return a
         out = v.agent(a)
         out["documents"] = [d for d in a.get("documents") or [] if d.get("doc_id") in v.visible]
-        out["conflicts"] = [c for c in a.get("conflicts") or [] if v.conflict_ok(c)]
+        out["conflicts"] = [v.conflict(c) for c in a.get("conflicts") or [] if v.conflict_ok(c)]
         out["facts"] = [f for f in a.get("facts") or [] if v.fact_ok(f)]
         return out
 
@@ -554,8 +574,23 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         res = _jsonable(await s.trust_check(req.question, req.draft_answer, sources, user.access))
         if isinstance(res, dict) and not v.full:
             if isinstance(res.get("conflicts"), list):
-                res["conflicts"] = [c for c in res["conflicts"] if not isinstance(c, dict) or v.conflict_ok(c)]
+                res["conflicts"] = [v.conflict(c) for c in res["conflicts"] if isinstance(c, dict) and v.conflict_ok(c)]
             res = json.loads(v.redact(json.dumps(res)))
+        return res
+
+    # ---------------------------------------------------------------- owner inbox
+    @api.get("/inbox")
+    async def inbox(user: User = Depends(require("admin", "expert"))):
+        """Open conflicts that need a human (the caller's own cells first for experts) plus detected impacts."""
+        s = sw()
+        v = View(s, user)
+        res = _jsonable(s.inbox(user.access, owner=user.display_name if user.role == "expert" else None))
+        res["conflicts"] = [v.conflict(c) for c in res["conflicts"] if v.conflict_ok(c)]
+        if not v.full:
+            res["impacts"] = [{**i, "affected": [a for a in i["affected"] if v.doc_ok(a.get("doc_id"))]}
+                              for i in res["impacts"] if i["conflict_id"] in {c["conflict_id"] for c in res["conflicts"]}]
+            res = json.loads(v.redact(json.dumps(res)))
+        res["user"] = user.display_name
         return res
 
     # ---------------------------------------------------------------- write-back

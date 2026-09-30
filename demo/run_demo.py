@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import shutil
 import sys
 import time
@@ -35,6 +36,11 @@ ROOT = Path(__file__).resolve().parent.parent
 GOLDEN = ROOT / "corpus" / "golden_questions.json"
 EVENTS_LOG = ROOT / "backend" / "state" / "events.jsonl"
 RECORDINGS = ROOT / "demo" / "recordings"
+PASSCODES = ROOT / "backend" / "state" / "demo_passcodes.json"
+ADMIN = "desk"  # reset / ingest / replay are admin-only
+# golden-question "user" -> demo login. Queries run as sofie so the UI (logged in as sofie) shows them;
+# a query's results are visible only to its creator.
+LOGIN_FOR = {"consultant": "sofie", "client:Brouwerij Van Dessel": "vandessel", "public": "guest"}
 
 FALLBACK_QUESTIONS = [
     {"question": "What is the PC 200 wage indexation on 1 January 2026?", "user": "consultant"},
@@ -137,7 +143,9 @@ def show(ev: dict) -> None:
         con.print(f"    {ev.get('agent_id'):>4} [{col}]{bar}[/] {tok}/{bud} tok  +{ev.get('claims', 0)} claims")
     elif t == "conflict_detected":
         c = ev.get("conflict", {})
-        con.print(f"  [bold red]! CONFLICT[/] [red]{c.get('kind', '')}[/] in {ev.get('agent_id')}: {c.get('summary', '')}")
+        x = " [bold magenta]cross-agent[/]" if c.get("cross_agent") else ""
+        con.print(f"  [bold red]! CONFLICT[/] [red]{c.get('kind', '')}[/]{x} in {ev.get('agent_id')}: "
+                  f"{c.get('plain_summary') or ''} [dim]{c.get('summary', '')}[/]")
     elif t == "split_started":
         con.print(f"  [bold bright_yellow]~ {ev.get('agent_id')} over budget "
                   f"({ev.get('tokens')}/{ev.get('budget')}), dividing...[/]")
@@ -156,6 +164,8 @@ def show(ev: dict) -> None:
     elif t == "ingest_done":
         con.rule(f"[bold green]ingest done: {ev.get('docs')} docs, {ev.get('agents')} agents, "
                  f"{ev.get('splits')} splits, {ev.get('conflicts')} conflicts")
+    elif t == "impact_detected":
+        con.print(f"  [bold bright_red]>> IMPACT[/] {ev.get('summary', '')}")
     elif t == "reset":
         con.rule("[dim]reset")
     elif t == "query_routed":
@@ -201,6 +211,46 @@ def baseline_panel(res: dict | None) -> Panel:
     return Panel(body, title="Plain RAG (BM25 top-4)", border_style="red")
 
 
+# ---------------------------------------------------------------- auth
+
+def passcodes() -> dict[str, str]:
+    """MITOSIS_PASSCODES (JSON) or backend/state/demo_passcodes.json. Never printed."""
+    raw = os.environ.get("MITOSIS_PASSCODES")
+    try:
+        return json.loads(raw) if raw else json.loads(PASSCODES.read_text())
+    except (OSError, ValueError):
+        con.print("[red]no passcodes: start the backend once (it writes backend/state/demo_passcodes.json) "
+                  "or set MITOSIS_PASSCODES[/]")
+        return {}
+
+
+class Clients:
+    """One logged-in httpx client per demo user, created lazily."""
+
+    def __init__(self, api: str):
+        self.api = api
+        self.codes = passcodes()
+        self.by_user: dict[str, httpx.AsyncClient] = {}
+
+    async def get(self, username: str) -> httpx.AsyncClient:
+        if username not in self.by_user:
+            c = httpx.AsyncClient(base_url=self.api, timeout=30)
+            r = await c.post("/api/login", json={"username": username, "passcode": self.codes.get(username, "")})
+            if r.status_code != 200:
+                await c.aclose()
+                raise RuntimeError(f"login as {username} failed ({r.status_code})")
+            c.headers["Authorization"] = f"Bearer {r.json()['token']}"
+            self.by_user[username] = c
+        return self.by_user[username]
+
+    async def for_question(self, q: dict) -> httpx.AsyncClient:
+        return await self.get(LOGIN_FOR.get(q.get("user", "consultant"), "sofie"))
+
+    async def close(self) -> None:
+        for c in self.by_user.values():
+            await c.aclose()
+
+
 # ---------------------------------------------------------------- steps
 
 async def ask(client: httpx.AsyncClient, stream: Stream, q: dict, baseline: bool, timeout: float) -> None:
@@ -210,19 +260,24 @@ async def ask(client: httpx.AsyncClient, stream: Stream, q: dict, baseline: bool
     con.print(f"[bold white]{question}[/]")
     if q.get("why_plain_rag_fails"):
         con.print(f"[dim]why plain RAG fails: {q['why_plain_rag_fails']}[/]")
-    mark = len(stream.events)
-    r = await client.post("/api/query", json={"question": question, "user": user})
+    r = await client.post("/api/query", json={"question": question})
     r.raise_for_status()
     qid = r.json().get("query_id")
 
     base_task = asyncio.create_task(run_baseline(client, question, qid)) if baseline else None
-    ev = await stream.wait(lambda e: e.get("type") == "query_answer" and e.get("query_id") == qid,
-                           timeout, start=mark)
-    if ev is None and qid:  # stream missed it: poll
+    # query events reach only their creator's stream, so poll the result with the asking user's client
+    ev, deadline = None, time.monotonic() + timeout
+    while qid and time.monotonic() < deadline:
         try:
-            ev = (await client.get(f"/api/query/{qid}")).json()
+            res = (await client.get(f"/api/query/{qid}")).json()
         except (httpx.HTTPError, ValueError):
-            ev = {"answer": "(no answer: timed out)"}
+            res = {}
+        if res.get("status") in ("done", "error"):
+            ev = res
+            break
+        await asyncio.sleep(0.5)
+    if ev is None:
+        ev = {"answer": "(no answer: timed out)"}
     base = await base_task if base_task else None
     panels = [answer_panel(ev or {})] + ([baseline_panel(base)] if baseline else [])
     con.print(Columns(panels, equal=True, expand=True))
@@ -282,57 +337,74 @@ def _secs(ts) -> float | None:
 
 
 async def main(a: argparse.Namespace) -> None:
-    async with httpx.AsyncClient(base_url=a.api, timeout=30) as client:
-        if a.replay:
-            path = Path(a.replay).resolve()
-            stream = Stream(client)
-            reader = asyncio.create_task(stream.run())
-            try:
-                await asyncio.wait_for(stream.connected.wait(), 5)
-                r = await client.post("/api/replay", json={"file": str(path), "speed": a.speed})
-                r.raise_for_status()
-                con.print(f"[yellow]replaying {path.name} at {a.speed}x via the API (watch the browser)[/]")
-                await stream.wait(lambda e: e.get("type") == "ingest_done", a.timeout)
-                reader.cancel()
-            except (httpx.HTTPError, asyncio.TimeoutError, OSError):
-                reader.cancel()
-                await replay_local(path, a.speed)
-            return
+    clients = Clients(a.api)
+    try:
+        await _main(a, clients)
+    finally:
+        await clients.close()
 
+
+async def _main(a: argparse.Namespace, clients: Clients) -> None:
+    try:
+        client = await clients.get(ADMIN)
+    except (httpx.HTTPError, RuntimeError) as e:
+        con.print(f"[red]{e}[/]")
+        client = None
+    if a.replay:
+        path = Path(a.replay).resolve()
         stream = Stream(client)
         reader = asyncio.create_task(stream.run())
         try:
-            await asyncio.wait_for(stream.connected.wait(), 10)
-        except asyncio.TimeoutError:
-            con.print(f"[red]cannot reach {a.api}/api/events; is ./start.sh running?[/]")
-            sys.exit(1)
-
-        questions = load_questions()
-        if a.questions:
-            questions = questions[: a.questions]
-
-        if not a.skip_ingest:
-            con.rule("[bold]Mitosis: live ingest")
-            (await client.post("/api/reset")).raise_for_status()
-            await pause(a.interactive, 0, "start ingest")
-            r = await client.post("/api/ingest", json={"corpus": a.corpus, "delay_ms": a.delay_ms})
+            if client is None:
+                raise OSError("API unreachable")
+            await asyncio.wait_for(stream.connected.wait(), 5)
+            r = await client.post("/api/replay", json={"file": str(path), "speed": a.speed})
             r.raise_for_status()
-            con.print(f"[dim]queued {r.json().get('queued', '?')} docs, delay {a.delay_ms} ms[/]")
-            done = await stream.wait(lambda e: e.get("type") == "ingest_done", a.timeout)
-            if done is None:
-                con.print("[red]no ingest_done within timeout; asking questions anyway[/]")
+            con.print(f"[yellow]replaying {path.name} at {a.speed}x via the API (watch the browser)[/]")
+            await stream.wait(lambda e: e.get("type") == "ingest_done", a.timeout)
+            reader.cancel()
+        except (httpx.HTTPError, asyncio.TimeoutError, OSError):
+            reader.cancel()
+            await replay_local(path, a.speed)
+        return
 
-        for i, q in enumerate(questions):
-            await pause(a.interactive, a.gap if i else 1, f"ask Q{i + 1}/{len(questions)}")
-            try:
-                await ask(client, stream, q, not a.no_baseline, a.timeout)
-            except httpx.HTTPError as e:
-                con.print(f"[red]query failed: {e}[/]")
+    if client is None:
+        con.print(f"[red]cannot reach {a.api}; is ./start.sh running?[/]")
+        sys.exit(1)
+    stream = Stream(client)
+    reader = asyncio.create_task(stream.run())
+    try:
+        await asyncio.wait_for(stream.connected.wait(), 10)
+    except asyncio.TimeoutError:
+        con.print(f"[red]cannot reach {a.api}/api/events; is ./start.sh running?[/]")
+        sys.exit(1)
 
-        if a.record:
-            await asyncio.sleep(0.5)  # let the backend flush events.jsonl
-            record(a.record)
-        reader.cancel()
+    questions = load_questions()
+    if a.questions:
+        questions = questions[: a.questions]
+
+    if not a.skip_ingest:
+        con.rule("[bold]Mitosis: live ingest")
+        (await client.post("/api/reset")).raise_for_status()
+        await pause(a.interactive, 0, "start ingest")
+        r = await client.post("/api/ingest", json={"corpus": a.corpus, "delay_ms": a.delay_ms})
+        r.raise_for_status()
+        con.print(f"[dim]queued {r.json().get('queued', '?')} docs, delay {a.delay_ms} ms[/]")
+        done = await stream.wait(lambda e: e.get("type") == "ingest_done", a.timeout)
+        if done is None:
+            con.print("[red]no ingest_done within timeout; asking questions anyway[/]")
+
+    for i, q in enumerate(questions):
+        await pause(a.interactive, a.gap if i else 1, f"ask Q{i + 1}/{len(questions)}")
+        try:
+            await ask(await clients.for_question(q), stream, q, not a.no_baseline, a.timeout)
+        except httpx.HTTPError as e:
+            con.print(f"[red]query failed: {e}[/]")
+
+    if a.record:
+        await asyncio.sleep(0.5)  # let the backend flush events.jsonl
+        record(a.record)
+    reader.cancel()
 
 
 def parse() -> argparse.Namespace:
