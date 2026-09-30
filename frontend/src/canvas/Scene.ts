@@ -837,7 +837,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 function short(s: string, n = 22) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
 function labelVal(a: Agent) {
   const v = a.scope.value;
-  if (v === 'none' && a.scope.dimension === 'client') return 'sector-wide';
+  if (a.scope.dimension === 'client' && (!v || v === 'none' || v === 'no client' || v.startsWith('all clients'))) return 'all clients';
   return v;
 }
 function targetR(n: Node) { return n.hub > 0.5 ? 8 : n.r; }

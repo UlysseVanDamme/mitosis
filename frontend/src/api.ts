@@ -1,6 +1,7 @@
 import { applyEvent, getState, onEvent, patch } from './store';
 import type { Agent, AppNotification, GoldenQuestion, Handover, MitosisEvent, Role, User } from './types';
 import { MockEngine } from './mock/engine';
+import { tidy } from './labels';
 
 const params = new URLSearchParams(location.search);
 export const MOCK = params.get('mock') === '1';
@@ -53,6 +54,8 @@ function setAuth(t: string | null, u: User | null) {
 
 export function logout() {
   setAuth(null, null);
+  streamGen++;
+  if (retry) { clearTimeout(retry); retry = null; }
   es?.close(); es = null;
   if (!MOCK) patch({ connected: false });
 }
@@ -115,26 +118,40 @@ async function post(path: string, body?: unknown) {
 let es: EventSource | null = null;
 let retry: ReturnType<typeof setTimeout> | null = null;
 
+let streamGen = 0;
+
+/** Opens the SSE stream with a short-lived SSE token (never the API token in a URL). */
 function openStream() {
   if (retry) { clearTimeout(retry); retry = null; }
   es?.close(); es = null;
   if (!token) return;
-  const mine = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
+  const gen = ++streamGen;
+  const again = () => { if (gen === streamGen) retry = setTimeout(() => { if (token) openStream(); }, 1500); };
+  post('/sse-token').then((j: { token?: string }) => {
+    if (gen !== streamGen || !token) return;
+    if (!j?.token) { again(); return; }
+    startStream(j.token, gen);
+  }).catch((err) => { if (!(err instanceof AuthError)) again(); });
+  // In case the server does not push a snapshot on connect, pull the (access-filtered) state once.
+  authFetch('/state').then((r) => (r.ok ? r.json() : null)).then((st) => {
+    if (st) applyEvent({ type: 'snapshot', ts: Date.now() / 1000, state: tidy(st) });
+  }).catch(() => {});
+}
+
+function startStream(sseToken: string, gen: number) {
+  const mine = new EventSource(`/api/events?token=${encodeURIComponent(sseToken)}`);
   es = mine;
   mine.onopen = () => patch({ connected: true });
   mine.onmessage = (m) => {
-    try { applyEvent(JSON.parse(m.data) as MitosisEvent); } catch (err) { console.warn('bad event', err); }
+    try { applyEvent(tidy(JSON.parse(m.data) as MitosisEvent)); } catch (err) { console.warn('bad event', err); }
   };
   mine.onerror = () => {
     if (es !== mine) return;
     patch({ connected: false });
     mine.close(); es = null;
-    retry = setTimeout(() => { if (token) openStream(); }, 1500);
+    // Reconnect with a fresh SSE token (they expire after ~2 minutes).
+    if (gen === streamGen) retry = setTimeout(() => { if (token) openStream(); }, 1500);
   };
-  // In case the server does not push a snapshot on connect, pull the (access-filtered) state once.
-  authFetch('/state').then((r) => (r.ok ? r.json() : null)).then((st) => {
-    if (st) applyEvent({ type: 'snapshot', ts: Date.now() / 1000, state: st });
-  }).catch(() => {});
 }
 
 export function connect() {
@@ -190,7 +207,7 @@ export const api = {
   async agent(id: string): Promise<Agent | null> {
     if (mock) return mock.agent(id, getState().user) as Agent | null;
     const r = await authFetch(`/agents/${encodeURIComponent(id)}`);
-    return r.ok ? r.json() : null;
+    return r.ok ? tidy(await r.json()) : null;
   },
   async notifications(): Promise<AppNotification[]> {
     if (mock) return mock.notifications(getState().auth?.username ?? '');
@@ -198,12 +215,12 @@ export const api = {
     if (!r.ok) return [];
     const j = await r.json();
     const list = Array.isArray(j) ? j : j.notifications;
-    return Array.isArray(list) ? list : [];
+    return Array.isArray(list) ? tidy(list) : [];
   },
   async handover(): Promise<Handover | null> {
     if (mock) return mock.handover(getState().auth?.username ?? '');
     const r = await authFetch('/handover');
-    return r.ok ? r.json() : null;
+    return r.ok ? tidy(await r.json()) : null;
   },
   async golden(): Promise<GoldenQuestion[]> {
     if (mock) return mock.golden(getState().user);
