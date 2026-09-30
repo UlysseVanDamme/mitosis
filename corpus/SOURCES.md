@@ -1,11 +1,11 @@
 # Corpus sources
 
-94 documents in `docs/`, ingest order in `manifest.json` (6 waves). Regenerate with
+102 documents in `docs/`, ingest order in `manifest.json` (8 ingest waves). Regenerate with
 `python3 corpus/build.py`, check with `python3 corpus/validate.py`.
 
-- **Real public sources (23 docs, `access_group: "public"`, url kept).** Rewritten as short, faithful
+- **Real public sources (24 docs, `access_group: "public"`, url kept).** Rewritten as short, faithful
   English summaries with the Dutch/French key sentence kept where useful. Figures are copied as found.
-- **Fictional internal content (71 docs).** All companies, people, tickets, Slack threads, policies, CAOs
+- **Fictional internal and client content (78 docs).** All companies, people, tickets, Slack threads, policies, CAOs
   and emails are invented: Brouwerij Van Dessel, Softwarehuis Delta, Mertens Interieur, Bouwgroep Maes,
   AZ Vlaskouter, Restogroep De Gouden Lepel, Verhaeghe Logistics (with NL and LU entities); staff Jan
   Peeters, Koen Janssens, Sofie Claes, Lotte Wouters, Karim El Amrani, Inge Vermeulen, Emma de Vries,
@@ -55,12 +55,12 @@ FAQ pages from general knowledge, not from a fetched source.
 
 ## Planted conflicts
 
-`planted_conflicts.json` is the answer key: 17 planted conflicts (4 forecast_vs_final, 6
-temporal_supersession, 3 scope_difference incl. the Van Dessel client override, 4 true_contradiction),
+`planted_conflicts.json` is the answer key: 21 planted conflicts (5 forecast_vs_final, 7
+temporal_supersession, 4 scope_difference incl. the Van Dessel client override, 5 true_contradiction),
 each with the doc_ids involved and the expected winner. Decoys that agree with each other: PC 200 2.21%
 appears in 5 independent real sources plus internal Slack/newsletter; PC 302 2.189%, telework 164.21 and
 the LU June index each appear in both a real and an internal doc.
 
-## Wave 2 additions
+## Documents in ingest waves 7 and 8
 - `be_fr_pc200_index_2026`: French-language summary of the PC 200 2.21% figure (same figure as the Dutch releases above). URL points to the SD Worx French press landing page; the exact French release URL was not verified.
-- All other wave 7/8 docs (handover note, PRC-EOY-2019, Van Dessel Nederland BV, Teams chat, Dutch team note, injected Slack message, PII ticket) are fictional. The national register number and IBAN in `tkt_2026_0321_vandessel` are fictional test data (the IBAN is the standard documentation example).
+- All other docs in waves 7 and 8 (handover note, PRC-EOY-2019, Van Dessel Nederland BV, Teams chat, Dutch team note, injected Slack message, PII ticket) are fictional. The national register number and IBAN in `tkt_2026_0321_vandessel` are fictional test data (the IBAN is the standard documentation example).

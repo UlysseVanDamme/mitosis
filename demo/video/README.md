@@ -18,14 +18,14 @@
 | 1:33-2:01 | c_explore | Presses E. Clicks the first handover item (evidence), goes back, types the Van Dessel question, waits for the answer card and opens "why". |
 | 2:01-2:17 | d_jan_verify | Switches to Jan, opens the open contradiction matching `VERIFY_MATCH` and clicks Verify (at most `VERIFY_MAX` times). |
 | 2:17-2:29 | e_sofie_green | Switches to Sofie and asks the same question again. The answer should now be green. |
-| 2:29-2:45 | f_client | Switches to Van Dessel HR. Asks in the client portal (or in Explore mode if this build has no portal), then asks about another client, which should be refused. |
-| 2:45-2:53 | g_end | `/compare.html?act=4`: the triptych and "Find it. Understand it. Trust it." |
+| 2:29-2:45 | f_client | Switches to Van Dessel HR. Asks in the client portal (falls back to Explore mode if the portal button is missing), then asks about another client, which should be refused. |
+| 2:45-2:53 | g_end | Opens `END_PATH`, currently `/compare.html?act=4`. In the current compare scene the closing line "Find it. Understand it. Trust it." is act 8 (act 4 is "Mitosis, up close"), so set `END_PATH = "/compare.html?act=8"` in `record.py` before the final take. |
 
 It signs in as jan, vandessel, desk and sofie through the login screen before the first app shot, so user switches later on need no passcode on camera. The sign-ins and the reset happen between marks and are cut out.
 
 ## Commands
 
-Run these from the repo root after the final UI is merged, with the backend and frontend running (`./start.sh`, frontend on 5173):
+Run these from the repo root with the backend and frontend running (`./start.sh`, frontend on 5173):
 
 ```bash
 uv run demo/video/record.py                  # about 4 min: 173 s of shots plus the off-camera ingest wait
@@ -47,7 +47,7 @@ Check the length: `ffprobe -v error -show_entries format=duration -of csv=p=0 de
 
 ## Passcodes
 
-The recorder reads passcodes at runtime and never prints them. It looks in this order: `MITOSIS_PASSCODES` in the environment, `MITOSIS_PASSCODES` in the repo-root `.env` (this worktree's, then the main checkout's), then `backend/state/demo_passcodes.json`.
+The recorder reads passcodes at runtime and never prints them. It looks in this order: `MITOSIS_PASSCODES` in the environment, `MITOSIS_PASSCODES` in the repo-root `.env` (written by `start.sh`), then `backend/state/demo_passcodes.json`. In a git worktree it also checks the main checkout.
 
 ## When the UI changes
 
@@ -55,9 +55,13 @@ Edit `SEL` at the top of `record.py`. Each element has a list of candidate selec
 
 If a compare build has no `?auto=1`, set `COMPARE_KEY_TIMES` (seconds into the shot) and the recorder presses ArrowRight at those times.
 
-## Tested (2026-09-30, against a vite on 5471 serving integration `7e6e6b2`, backend on 8000)
+## Test status
 
-- a_compare and g_end: recorded and assembled to 1920x1080 H.264 at 30 fps. The compare build running then did not auto-advance yet (`?auto=1` is in the build/w5-scene branch).
-- Sign-in as all four users through the UI, and the Van Dessel client question (answered in Explore mode, because that build has no portal): these work.
-- c_explore and e_sofie_green: in that build, asking in Explore mode crashes React with `text.matchAll is not a function` (a frontend bug in that build, not in the recorder). Test these again after the merge.
-- b_stage (reset + replay) and d_jan_verify were not run, because they change shared backend state. Run them on the final setup.
+A partial run on 30 Sep 2026 (an earlier build, vite on 5471, backend on 8000):
+
+- a_compare and g_end were recorded and assembled to 1920x1080 H.264 at 30 fps.
+- Sign-in as all four users through the UI and the Van Dessel client question worked.
+- c_explore and e_sofie_green hit a frontend crash in that build (`text.matchAll is not a function`); retest on the final build.
+- b_stage (reset and replay) and d_jan_verify were not run, because they change shared backend state. Run them on the final setup.
+
+Since then `compare.html` supports `?auto=1` and the app has the client portal. Run the full recording again on the final build.

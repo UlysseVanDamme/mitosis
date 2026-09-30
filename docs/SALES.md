@@ -73,7 +73,7 @@ Two more checked figures explain why handovers and search are where this pays. I
 
 **"Our experts are busy."** That is the point. Today they are interrupted for everything. Mitosis settles what a rule can settle (final beats forecast, newer beats older, a client agreement beats the sector rule for that client) and only sends them the rest, with both sides and what depends on it, in one message.
 
-**"Privacy and GDPR."** Access control is applied before anything is read, so a client admin never sees another client's data. National register numbers and IBANs are redacted before anything reaches a model. It reads sources where they already are. Where it runs and which model it uses is part of the pilot agreement.
+**"Privacy and GDPR."** Access control is applied before anything is read, so a client admin never sees another client's data. National register numbers, IBANs, private e-mail addresses and phone numbers are redacted before anything reaches a model. It reads sources where they already are. Where it runs and which model it uses is part of the pilot agreement.
 
 **"What if it picks the wrong winner?"** It always shows both sides and the rule it applied. Anything it can't settle with a rule goes to the owner, and only the owner can mark an answer verified.
 
@@ -90,11 +90,11 @@ Two more checked figures explain why handovers and search are where this pays. I
 
 This was a controlled test on our own corpus: 102 documents, real public Belgian payroll sources around fictional internal content, with 21 contradictions planted on purpose. It compares approaches; it does not prove production accuracy.
 
-- Answer accuracy on 18 golden questions: Mitosis 14/18 (78%), plain retrieval 11/18 (61%).
-- Planted contradictions surfaced: 19 of 21 (90%), 6 of them across specialist agents. Plain retrieval has no conflict detection.
+- Answer accuracy on 18 golden questions: Mitosis 14/18 (78%), plain retrieval 12/18 (67%).
+- Planted contradictions surfaced: 19 of 21 (90%), 8 of them across specialist agents. Plain retrieval has no conflict detection.
 - Access-control leaks: 0. Prompt-injection leaks: 0 for Mitosis, 1 for plain retrieval. Personal data in answers: 0.
-- 85% of routing decisions were made without an AI call.
-- The stale client config (Softwarehuis Delta still on 2.13%) was caught as a contradiction. The eval did not yet count anything through the separate impact-detection path, so that part is shown in the demo but not yet measured.
-- A first, uncached answer took a median of 13.5 seconds.
+- 87% of routing decisions were made without an AI call.
+- The stale client config (Softwarehuis Delta still on 2.13%) was caught as a contradiction. The eval does not count anything through the separate impact-detection path, so that part is shown in the demo but not yet measured.
+- A first, uncached answer took a median of 13.4 seconds (plain retrieval: 5.4 seconds).
 
-The pilot replaces these with numbers from a real team.
+Full results: [eval/results.md](../eval/results.md). The pilot replaces these with numbers from a real team.
