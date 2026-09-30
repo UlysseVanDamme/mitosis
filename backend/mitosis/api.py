@@ -314,6 +314,7 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
     holder: dict = {"swarm": swarm, "auth": auth}
     qowners: dict[str, str] = {}  # query_id -> username of its creator
     sse_count: dict[str, int] = {}
+    replay_tasks: set[asyncio.Task] = set()
     query_rl = RateLimiter(QUERY_RATE)
     admin_rl = RateLimiter(ADMIN_RATE)
 
@@ -452,6 +453,8 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
     @api.post("/reset")
     async def reset(user: User = Depends(admin_only)):
         admin_rl.check(user.username)
+        for task in list(replay_tasks):
+            task.cancel()
         sw().hub.muted = False
         await sw().reset()
         qowners.clear()
@@ -490,7 +493,7 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
             raise HTTPException(404, "recording not found")
         return p
 
-    async def _replay(hub: EventHub, path: Path, speed: float) -> None:
+    async def _replay(hub: EventHub, path: Path, speed: float, marks: Optional[dict] = None) -> None:
         prev = None
         with path.open() as f:
             for line in f:
@@ -510,6 +513,19 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
                     prev = ts
                 payload = {k: val for k, val in ev.items() if k not in ("type", "ts", "replayed")}
                 hub.publish(ev["type"], log=False, replayed=True, **payload)
+                if marks is not None and ev["type"] == "ingest_done":
+                    marks["ingest_done"] = True
+        if marks is not None:
+            marks["ingest_done"] = True
+
+    async def _sync_after_rebuild(s, marks: dict) -> None:
+        """Once the recording has shown its ingest and the silent rebuild is done, hand the browser the real
+        engine state (same layout, real conflict ids) so live questions and Verify match what is on screen."""
+        for _ in range(2400):  # at most 20 minutes
+            if marks.get("ingest_done") and not s.hub.muted:
+                s.hub.publish("snapshot", log=False, state=s.state(), keepLayout=True)
+                return
+            await asyncio.sleep(0.5)
 
     @api.post("/replay")
     async def replay(req: ReplayReq, user: User = Depends(admin_only)):
@@ -517,6 +533,8 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         s = sw()
         p = _recording(req.file)
         n = sum(1 for ln in p.open() if ln.strip())
+        for task in list(replay_tasks):  # a new replay replaces a running one
+            task.cancel()
         if req.rebuild:
             docs, order = load_corpus(None)
             if docs:
@@ -524,9 +542,12 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
                 await s.reset()
                 qowners.clear()
                 s.enqueue([docs[i] for i in order if i in docs], delay_ms=0)
-        t = asyncio.create_task(_replay(s.hub, p, req.speed))
-        s.bg.add(t)
-        t.add_done_callback(s.bg.discard)
+        marks: dict = {}
+        # kept out of s.bg: the engine waits for s.bg before ingest_done, and the rebuild must not wait for the replay
+        for task in (asyncio.create_task(_replay(s.hub, p, req.speed, marks if req.rebuild else None)),
+                     *([asyncio.create_task(_sync_after_rebuild(s, marks))] if req.rebuild else [])):
+            replay_tasks.add(task)
+            task.add_done_callback(replay_tasks.discard)
         audit("replay", user.username, file=p.name)
         return {"ok": True, "file": p.name, "events": n}
 
