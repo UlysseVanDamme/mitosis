@@ -52,7 +52,7 @@ export function ConflictCard({ c, compact }: { c: Conflict; compact?: boolean })
       <p className="resolution">{c.resolution}</p>
       {c.status !== 'verified' && (canVerify
         ? <p className="owner-line">Owner of {c.agent_id}: <b>{owner}</b>. You can verify.</p>
-        : <p className="owner-line">Only <b>{owner === 'Jan Peeters' || !owner ? 'Jan Peeters' : owner}</b> (owner) can verify. Ask them.</p>)}
+        : <p className="owner-line">Only <b>Jan Peeters</b> (owner) can verify</p>)}
     </div>
   );
 }

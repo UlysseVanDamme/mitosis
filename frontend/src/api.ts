@@ -169,6 +169,9 @@ export const api = {
   ingest: () => (mock ? void mock.ingest() : post('/ingest', { corpus: 'demo' })),
   reset: () => (mock ? mock.reset() : post('/reset')),
   replay: () => (mock ? void mock.ingest(2.2) : post('/replay', {})),
+  /** Hold the (mock) stream during a story-beat pause; the live backend keeps streaming. */
+  pause: () => { mock?.pause(); },
+  resume: () => { mock?.resume(); },
   async query(question: string, user: string): Promise<{ query_id: string }> {
     if (mock) return mock.query(question, user);
     const res = await post('/query', { question, user });
