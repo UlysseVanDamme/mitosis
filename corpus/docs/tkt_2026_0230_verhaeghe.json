@@ -11,5 +11,9 @@
   "client": "Verhaeghe Logistics",
   "topic": "indexation",
   "access_group": "client:Verhaeghe Logistics",
-  "text": "Ticket T-2026-0230. Client: Verhaeghe Logistics NV (PC 140.03 drivers, PC 200 office). Status: CLOSED.\n\nQuestion: \"What is the January 2026 index for our drivers?\"\n\nAnswer: PC 140.03 (road transport and logistics) is indexed by 2.18% on 1 January 2026. Office staff in\nPC 200 get 2.21%. Both applied correctly in January. The Dutch and Luxembourg entities follow their own\nnational rules (handled by the cross-border desk)."
+  "text": "Ticket T-2026-0230. Client: Verhaeghe Logistics NV (PC 140.03 drivers, PC 200 office). Status: CLOSED.\n\nQuestion: \"What is the January 2026 index for our drivers?\"\n\nAnswer: PC 140.03 (road transport and logistics) is indexed by 2.18% on 1 January 2026. Office staff in\nPC 200 get 2.21%. Both applied correctly in January. The Dutch and Luxembourg entities follow their own\nnational rules (handled by the cross-border desk).",
+  "owner": "Inge Vermeulen",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

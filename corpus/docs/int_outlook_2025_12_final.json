@@ -11,5 +11,9 @@
   "client": null,
   "topic": "indexation",
   "access_group": "internal",
-  "text": "Payroll Pulse #43. The January 2026 index figures are now final.\n\n- PC 200: 2.21% on 1 January 2026 (actual salaries, minimum scales, guaranteed minimum monthly\n  income). This replaces the 2.13% forecast that circulated in October. Several clients asked us about\n  the Pro-Pay figure; it is outdated.\n- PC 302: 2.189% on 1 January 2026.\n- PC 140.03: 2.18% on 1 January 2026.\n- PC 124: 0.21859% on 1 January 2026 (quarterly step).\n- PC 330: 2% in January 2026.\n\nParameters in the payroll engine are updated centrally by the Knowledge desk on 24 December. Client-\nspecific company CAOs that deviate from the sector rule (other date, other base) are NOT updated\ncentrally: the client's consultant must check the client config."
+  "text": "Payroll Pulse #43. The January 2026 index figures are now final.\n\n- PC 200: 2.21% on 1 January 2026 (actual salaries, minimum scales, guaranteed minimum monthly\n  income). This replaces the 2.13% forecast that circulated in October. Several clients asked us about\n  the Pro-Pay figure; it is outdated.\n- PC 302: 2.189% on 1 January 2026.\n- PC 140.03: 2.18% on 1 January 2026.\n- PC 124: 0.21859% on 1 January 2026 (quarterly step).\n- PC 330: 2% in January 2026.\n\nParameters in the payroll engine are updated centrally by the Knowledge desk on 24 December. Client-\nspecific company CAOs that deviate from the sector rule (other date, other base) are NOT updated\ncentrally: the client's consultant must check the client config.",
+  "owner": "Inge Vermeulen",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

@@ -11,5 +11,9 @@
   "client": null,
   "topic": "indexation",
   "access_group": "public",
-  "text": "SD Worx press release of 23 December 2025: on 1 January 2026 the wages of, among others, employees in\nthe Supplementary Joint Committee for Employees (PC 200) rise by 2.21%.\n\nThe figure is based on the evolution of the smoothed health index over the last months of 2025 and is\nthe final figure for PC 200. Several other joint committees also index their wages in January,\neach with their own mechanism and percentage; the 2.21% figure is specific to PC 200 and must not be\ncopied to other joint committees.\n\n(Summary based on the title and page of the press release; the full body text was not re-read line by\nline for this corpus.)"
+  "text": "SD Worx press release of 23 December 2025: on 1 January 2026 the wages of, among others, employees in\nthe Supplementary Joint Committee for Employees (PC 200) rise by 2.21%.\n\nThe figure is based on the evolution of the smoothed health index over the last months of 2025 and is\nthe final figure for PC 200. Several other joint committees also index their wages in January,\neach with their own mechanism and percentage; the 2.21% figure is specific to PC 200 and must not be\ncopied to other joint committees.\n\n(Summary based on the title and page of the press release; the full body text was not re-read line by\nline for this corpus.)",
+  "owner": "Jan Peeters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

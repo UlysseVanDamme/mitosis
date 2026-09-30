@@ -11,5 +11,9 @@
   "client": null,
   "topic": "access control",
   "access_group": "internal",
-  "text": "Policy SEC-01 (valid from 15 May 2025).\n\nClient users of the self-service portal and of any assistant may only see public information and the\ninformation of their own company. Consultants see all clients they serve.\n\nNever reveal another client's name in relation to its payroll settings, company CAO, tickets or\nsalary figures to a client user. Aggregated statements that could identify another client (for\nexample \"the other brewery in your region indexes on 1 January\") are also forbidden.\n\nIf a client user asks about another client, answer only with the public sector rule and state that\ninformation about other clients cannot be shared."
+  "text": "Policy SEC-01 (valid from 15 May 2025).\n\nClient users of the self-service portal and of any assistant may only see public information and the\ninformation of their own company. Consultants see all clients they serve.\n\nNever reveal another client's name in relation to its payroll settings, company CAO, tickets or\nsalary figures to a client user. Aggregated statements that could identify another client (for\nexample \"the other brewery in your region indexes on 1 January\") are also forbidden.\n\nIf a client user asks about another client, answer only with the public sector rule and state that\ninformation about other clients cannot be shared.",
+  "owner": "Inge Vermeulen",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      MITOSIS_PROVIDER: fake
+      MITOSIS_FAKE_LLM: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Validate corpus
+        run: python3 corpus/validate.py
+      - name: Tests (fake LLM)
+        working-directory: backend
+        run: uv run --locked pytest -q
+      - name: Eval smoke run (fake LLM, fails on any access-control leak)
+        run: |
+          # throwaway passcodes for this run only, masked in the log
+          PASSCODES=$(python3 -c 'import json,secrets;print(json.dumps({u:secrets.token_urlsafe(12) for u in ["desk","jan","sofie","vandessel","guest"]}))')
+          for p in $(echo "$PASSCODES" | python3 -c 'import json,sys;print(" ".join(json.load(sys.stdin).values()))'); do echo "::add-mask::$p"; done
+          export MITOSIS_PASSCODES="$PASSCODES"
+          (cd backend && uv run --locked uvicorn mitosis.api:app --host 127.0.0.1 --port 8801 > "$RUNNER_TEMP/backend.log" 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8801/api/health > /dev/null && break; sleep 1; done
+          python3 eval/run_eval.py --base http://127.0.0.1:8801 --ingest --timeout 60
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-fake
+          path: eval/results.*
+          if-no-files-found: ignore
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Typecheck
+        working-directory: frontend
+        run: npx tsc -p . --noEmit
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      - name: Audit (high and critical)
+        # reported, not blocking: dependency bumps are tracked in SECURITY.md
+        continue-on-error: true
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  secrets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (full history)
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.18.4 \
+            detect --source /repo --redact --verbose --exit-code 1

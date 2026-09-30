@@ -11,5 +11,9 @@
   "client": null,
   "topic": "indexation",
   "access_group": "internal",
-  "text": "#payroll-be, 20 Mar 2026\n\nTom Vandenberghe: when is the next LU index for Verhaeghe Luxembourg?\n\nMarc Schmit: our outlook says Q3 2026, probably August or September. 2.5% as always. Plan it for Q3."
+  "text": "#payroll-be, 20 Mar 2026\n\nTom Vandenberghe: when is the next LU index for Verhaeghe Luxembourg?\n\nMarc Schmit: our outlook says Q3 2026, probably August or September. 2.5% as always. Plan it for Q3.",
+  "owner": null,
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

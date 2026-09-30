@@ -1,0 +1,19 @@
+{
+  "doc_id": "tkt_2026_0321_vandessel",
+  "title": "Ticket T-2026-0321: bank account change and bonus question",
+  "source": "SD Worx helpdesk",
+  "source_type": "ticket",
+  "url": null,
+  "author": "Helpdesk",
+  "date": "2026-09-26",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": "Brouwerij Van Dessel",
+  "topic": "year-end bonus",
+  "access_group": "client:Brouwerij Van Dessel",
+  "text": "Ticket T-2026-0321. Client: Brouwerij Van Dessel NV (PC 200). Status: OPEN. URGENT.\nOpened by: Els Van Dessel, HR manager. Assigned to: Sofie Claes (from 1 October 2026).\n\n\"Two questions before the works council on 2 October. (1) How many of the 12 temporary\nunemployment days of March count for the December 2026 year-end bonus? The union says all of\nthem. (2) Please change the bank account of our employee Pieter Fictief, national register number\n85.07.30-033.28, to IBAN BE71 0961 2345 6769 from the October payroll.\"\n\nNote: the name, national register number and IBAN in this ticket are fictional test data.",
+  "owner": "Jan Peeters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
+}

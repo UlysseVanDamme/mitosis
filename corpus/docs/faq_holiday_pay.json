@@ -11,5 +11,9 @@
   "client": null,
   "topic": "holiday pay",
   "access_group": "internal",
-  "text": "Q: How is holiday pay calculated for employees (bedienden)?\n\nA: Employees keep their normal monthly salary during their holidays (simple holiday pay) and receive\ndouble holiday pay, normally paid in May or June. Double holiday pay for employees equals 92% of the\ngross monthly salary of the month in which the holidays are taken, pro rata for the prestations of the\nprevious year (the holiday service year).\n\nWhen an employee leaves, the employer pays leaving holiday pay (vertrekvakantiegeld) on the last\npayslip; the next employer then deducts it.\n\nWorkers (arbeiders) are different: their holiday pay is paid by the holiday fund, not by the employer.\n\nAsk the Knowledge desk for special cases (long illness, time credit during the service year)."
+  "text": "Q: How is holiday pay calculated for employees (bedienden)?\n\nA: Employees keep their normal monthly salary during their holidays (simple holiday pay) and receive\ndouble holiday pay, normally paid in May or June. Double holiday pay for employees equals 92% of the\ngross monthly salary of the month in which the holidays are taken, pro rata for the prestations of the\nprevious year (the holiday service year).\n\nWhen an employee leaves, the employer pays leaving holiday pay (vertrekvakantiegeld) on the last\npayslip; the next employer then deducts it.\n\nWorkers (arbeiders) are different: their holiday pay is paid by the holiday fund, not by the employer.\n\nAsk the Knowledge desk for special cases (long illness, time credit during the service year).",
+  "owner": "Inge Vermeulen",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

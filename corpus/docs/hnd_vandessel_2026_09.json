@@ -1,0 +1,19 @@
+{
+  "doc_id": "hnd_vandessel_2026_09",
+  "title": "Portfolio handover note: Brouwerij Van Dessel (Jan Peeters -> Sofie Claes)",
+  "source": "SD Worx client file",
+  "source_type": "policy",
+  "url": null,
+  "author": "Jan Peeters",
+  "date": "2026-09-22",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": "Brouwerij Van Dessel",
+  "topic": "year-end bonus",
+  "access_group": "internal",
+  "text": "Handover note, updated 22 September 2026. From 1 October 2026 the Brouwerij Van Dessel portfolio\nmoves from Jan Peeters to Sofie Claes (payroll consultant). Jan stays PC 200 expert and owner of the\nPC 200 topics; ask him when a sector rule is unclear.\n\nOpen points for the December 2026 year-end bonus (PC 200, policy PAY-EOY-05 v2):\n- Amount = December gross monthly salary, six months of seniority, pro rata for incomplete years.\n- Temporary unemployment: 38 production employees had 12 days of temporary unemployment for\n  economic reasons in March 2026 (bottling line replacement). From 2026 the first 5 days are\n  treated as worked days (gelijkgesteld); the other 7 days reduce the bonus pro rata.\n- Do NOT use the old year-end procedure PRC-EOY-2019 from the shared drive: it predates the\n  2025-2026 sector agreement and nobody maintains it any more.\n- Van Dessel Nederland BV (Breda sales office, 6 staff) is paid under Dutch contracts by the\n  cross-border desk (Emma de Vries). Its 13th-month rules do not apply to the Belgian employees.\n\nOther client specifics are unchanged: index on 1 February on base salary only (company CAO 2019),\neco-cheques converted into a bicycle allowance (company CAO 2023). The CAO flag was re-entered in\nthe engine on 3 February 2026.\n\nOwner: Jan Peeters until 30 September 2026, then Sofie Claes for client matters.",
+  "owner": "Jan Peeters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
+}
