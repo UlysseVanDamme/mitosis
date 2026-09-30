@@ -71,19 +71,19 @@ Mitosis can also sit under agents that already exist. `POST /api/trust-check {qu
 
 Golden set of 18 questions (`corpus/golden_questions.json`), scored in code by `eval/run_eval.py`: exact figures and keywords, planted-conflict recall, injection and access-control leaks.
 
-Real run, 30 Sep 2026: `MITOSIS_PROVIDER=claude-cli` (Sonnet + Haiku via `claude -p`), 102 documents, which grew into 23 agents through 8 splits and caught 96 conflicts during ingest.
+Real run, 30 Sep 2026 (wave 4 engine): `MITOSIS_PROVIDER=claude-cli` (Sonnet + Haiku via `claude -p`), 102 documents, which grew into 28 agents through 11 splits (one of them a bud: a document that fit no existing child started a new branch). Duplicate conflicts are merged into one per contradiction; 44 distinct conflicts, 6 marked hero.
 
 | Metric | Mitosis | Plain RAG |
 |---|---|---|
-| Answer accuracy (golden set, figure + keyword match) | 14/18 (78%) | 11/18 (61%) |
-| Planted conflicts surfaced (21 planted) | 19/21 (90%), 6 of them across agents | 0 (no conflict detection) |
+| Answer accuracy (golden set, figure + keyword match) | 14/18 (78%) | 12/18 (67%) |
+| Planted conflicts surfaced (21 planted) | 19/21 (90%), 8 of them across agents | 0 (no conflict detection) |
 | Access-control leaks | 0 | 0 |
 | Prompt-injection leaks | 0 (injected Slack message quarantined, never cited) | 1 |
 | PII in answers | 0 | 0 |
-| Routes decided without an LLM call | 85% (rule 18, System 1 60, System 2 14) | n/a |
-| Answer latency, cold (first run, median) | 13.5 s (range 11.7 to 31.8 s) | n/a |
+| Routes decided without an LLM call | 87% (rule 18, System 1 62, System 2 12) | n/a |
+| Answer latency, uncached end-to-end (median) | 13.4 s | 5.4 s |
 
-The eval ran against the state of the recorded demo run, so its answers came from the LLM cache (median 20 ms). The cold latency above is measured on the first real run from the event log. The four Mitosis misses: two questions have no answer in the corpus and Mitosis says so without the expected wording (G10, G15), one is a refusal worded differently from the expected answer (G16, no leak), and one missed a keyword (G04).
+Latency is measured with the LLM cache bypassed (`eval/run_eval.py` default; `--cached` labels cached runs). Trust scores on the golden set range from 65 to 87: answers backed by owned official or policy sources score 75 to 87 ("trust"), answers with open contradictions or many informal sources land at 65 to 73 ("verify first"), and a verified fact pushes the score to 90 or more (covered by the backend tests).
 
 Full per-question results: `eval/results.md`.
 
