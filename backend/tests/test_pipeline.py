@@ -13,6 +13,9 @@ from mitosis.swarm import Swarm, can_see, load_corpus
 
 FIX = Path(__file__).parent / "fixtures"
 
+import mitosis.swarm as _swm
+_swm.SPLIT_MIN_MS = 0
+
 
 def make_swarm(tmp_path, budget=120):
     hub = EventHub(log_path=tmp_path / "events.jsonl")

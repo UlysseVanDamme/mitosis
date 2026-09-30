@@ -21,6 +21,8 @@ DEFAULT_BUDGET = int(os.environ.get("MITOSIS_BUDGET", "7000"))
 CORPUS_DIR = Path(os.environ.get("MITOSIS_CORPUS", str(Path(__file__).resolve().parents[2] / "corpus")))
 EXTRACT_CONCURRENCY = 8
 CONFLICT_CONCURRENCY = 4
+# minimum time between split_started and agent_split so the UI "swell and pinch" animation can play
+SPLIT_MIN_MS = int(os.environ.get("MITOSIS_SPLIT_MIN_MS", "900"))
 
 USERS = ["consultant", "client:Brouwerij Van Dessel", "public"]
 
@@ -292,7 +294,7 @@ class Swarm:
         cands = [e for e in existing if any(_similar(e, n) for n in new)]
         if not cands:
             return
-        docs = {i: self.docs[i] for i in leaf.doc_ids if i in self.docs}
+        docs = {i: self.docs[i] for i in [*leaf.doc_ids, *(c.doc_id for c in cands)] if i in self.docs}
         t = asyncio.create_task(self._conflict_check(self.gen, leaf.scope.description, docs, cands, new))
         self.bg.add(t)
         t.add_done_callback(self.bg.discard)
@@ -364,7 +366,11 @@ class Swarm:
             self._emit_agent(agent)
             return
         self.hub.publish("split_started", agent_id=agent.agent_id, tokens=agent.tokens, budget=agent.budget)
+        t0 = time.monotonic()
         plan = await self.llm.choose_split(agent.scope.description, docs, sizes)
+        wait = SPLIT_MIN_MS / 1000 - (time.monotonic() - t0)
+        if wait > 0:
+            await asyncio.sleep(wait)
         groups = _validate_plan(plan, docs)
         if groups is None:
             plan = fake_split(docs, sizes)

@@ -312,7 +312,7 @@ def classify_conflict(e: Claim, n: Claim, docs: dict[str, Document]) -> dict:
         res = (f"Both hold within their own scope; for {win.scope.client} the client CAO ({win.value}) overrides the sector rule."
                if win.scope.client else "Both hold within their own scope (different joint committees).")
         human = False
-    elif date_e and date_n and date_e != date_n and rank.get(te, 2) >= 2 and rank.get(tn, 2) >= 2:
+    elif date_e and date_n and date_e != date_n and rank.get(te, 2) >= 3 and rank.get(tn, 2) >= 3:
         kind = "temporal_supersession"
         win = n if date_n > date_e else e
         res = f"The newer source ({win.value}, valid from {docs[win.doc_id].date if win.doc_id in docs else '?'}) supersedes the older one."
@@ -320,8 +320,15 @@ def classify_conflict(e: Claim, n: Claim, docs: dict[str, Document]) -> dict:
     else:
         kind = "true_contradiction"
         win = e if rank.get(te, 2) >= rank.get(tn, 2) else n
-        res = f"Sources disagree; {docs[win.doc_id].source_type if win.doc_id in docs else 'higher-ranked'} source ({win.value}) is more authoritative (policy > Slack), but a human should confirm."
-        human = True
+        weak = min(rank.get(te, 2), rank.get(tn, 2))
+        strong = max(rank.get(te, 2), rank.get(tn, 2))
+        wt = docs[win.doc_id].source_type if win.doc_id in docs else "higher-ranked"
+        if strong >= 4 and weak <= 2 and strong - weak >= 2:
+            res = f"The {wt} ({win.value}) is authoritative; the informal source is wrong or outdated (policy > Slack/tickets)."
+            human = weak == 1  # Slack vs policy: ask the owner to confirm and correct the channel
+        else:
+            res = f"Sources disagree; the {wt} ({win.value}) ranks higher, but a human should confirm."
+            human = True
     return {
         "claim_ids": [e.claim_id, n.claim_id],
         "kind": kind,
