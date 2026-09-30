@@ -12,6 +12,8 @@ export function connect() {
     patch({ connected: true });
     mock.snapshot();
     if (params.get('autostart') === '1') void mock.ingest();
+    const sel = params.get('select');
+    if (sel) onEvent((e) => { if (e.type === 'ingest_done') patch({ selectedAgent: sel }); });
     const aq = params.get('autoquery');
     if (aq != null) {
       const m = mock;

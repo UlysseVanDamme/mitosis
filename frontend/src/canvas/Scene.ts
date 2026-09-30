@@ -569,6 +569,10 @@ export class Scene {
     }
     ctx.restore();
 
+    if (s.selectedAgent === n.id) {
+      ctx.beginPath(); ctx.arc(x, y, r + 5 / k, 0, Math.PI * 2);
+      ctx.strokeStyle = oklch(0.97, 0.01, H, 0.9); ctx.lineWidth = 1.5 / k; ctx.stroke();
+    }
     // query highlight: rotating dashed ring, solid once answered
     if (qLeaf) {
       const done = this.queryDone.has(n.id);

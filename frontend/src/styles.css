@@ -140,6 +140,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .claim { position: relative; padding: 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line-soft); display: grid; gap: 5px; align-content: start; transition: opacity 0.3s; }
 .claim.win { border-color: oklch(0.8 0.15 150 / 0.55); background: oklch(0.8 0.15 150 / 0.06); }
 .claim.lose { opacity: 0.62; }
+.claim.win .claim-val { padding-right: 46px; }
 .claim.lose .claim-val { text-decoration: line-through; text-decoration-color: oklch(0.68 0.2 25 / 0.7); }
 .claim-val { font: 600 15px var(--sans); letter-spacing: -0.01em; }
 .claim-src { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--text-2); flex-wrap: wrap; }
