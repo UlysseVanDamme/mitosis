@@ -548,7 +548,7 @@ a.ev-cite:hover { background: oklch(0.88 0.14 85 / 0.14); }
 .row:hover, .ho:hover { background: var(--surface-2); }
 .row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); align-self: center; }
 .row .dot.r { background: var(--red); } .row .dot.g { background: var(--green); }
-.row-t { font-size: 13px; color: var(--text); }
+.row-t { font-size: 13px; color: var(--text); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .row-m { grid-column: 2; font-size: 13px; color: var(--text-3); }
 .ho { grid-template-columns: 26px 1fr; padding: 12px 2px; }
 .ho-n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: oklch(0.68 0.2 25 / 0.2); color: var(--red); font-size: 13px; font-weight: 600; }

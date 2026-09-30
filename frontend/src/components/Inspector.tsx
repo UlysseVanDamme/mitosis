@@ -72,8 +72,8 @@ function Row({ c, onClick }: { c: Conflict; onClick: () => void }) {
   return (
     <button className={`row ${c.status}`} onClick={onClick}>
       <i className={`dot ${c.status === 'verified' ? 'g' : c.status === 'open' ? 'r' : ''}`} />
-      <span className="row-t">{c.plain_summary || c.summary}</span>
-      <span className="row-m">{s.agents.get(c.agent_id)?.scope.value ?? c.agent_id}</span>
+      <span className="row-t">{noIds(c.summary || c.plain_summary || "")}</span>
+      <span className="row-m">{c.plain_summary} · {s.agents.get(c.agent_id)?.scope.value ?? c.agent_id}</span>
     </button>
   );
 }
@@ -143,6 +143,7 @@ function ConflictView({ c }: { c: Conflict }) {
   return (
     <>
       <h2>{c.plain_summary || c.summary}</h2>
+      {c.summary && c.plain_summary && <p className="muted">{noIds(c.summary)}</p>}
       <div className="sides">
         {sides.map((x, i) => (
           <div key={x.doc_id + i} className={`side ${decided ? (x.wins ? 'win' : 'lose') : ''}`}>
