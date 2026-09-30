@@ -317,7 +317,8 @@ export function applyEvent(e: MitosisEvent, animate = false) {
     case 'query_started': {
       const q = { ...query(s, e.query_id), question: e.question, user: e.user };
       s.queries.set(e.query_id, q);
-      s.activeQueryId = e.query_id;
+      // another viewer's live question must not replace the answer this viewer is reading
+      if (e.replayed || !s.activeQueryId) s.activeQueryId = e.query_id;
       log(s, e, `Query: "${e.question}" (${e.user})`, 'query');
       break;
     }

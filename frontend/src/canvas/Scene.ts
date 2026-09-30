@@ -303,7 +303,7 @@ export class Scene {
         n.r += (targetR2(a, s.budget) - n.r) * 0.1;
       }
       n.pulse *= 0.94;
-      const [h, c] = this.stage ? (this.spotlight === n.id && this.spotRed ? [25, 0.19] : stageHue(a, s)) : agentHue(a, s);
+      const [h, c] = this.stage ? (this.spotlight === n.id && this.spotRed ? [25, 0.19] : stageHue(a, s)) : s.lens === 'debt' ? agentHue(a, s) : stageHue(a, s);
       if (this.stage && Math.abs(h - n.hue) > 4) {
         // Fade through grey instead of sweeping the hue wheel (red -> green must not pass through teal).
         n.chroma += (0 - n.chroma) * 0.12;
@@ -609,7 +609,7 @@ export class Scene {
       const ang = (i / M) * Math.PI * 2 + t / (5000 + i * 90) + n.seed;
       const rad = r * (0.74 + 0.08 * Math.sin(i * 1.7 + t / 1300));
       ctx.beginPath(); ctx.arc(x + Math.cos(ang) * rad, y + Math.sin(ang) * rad, Math.max(1.3, r * 0.045), 0, Math.PI * 2);
-      ctx.fillStyle = this.stage ? oklch(0.82, 0.01, 250, 0.55) : sourceColor(d?.source_type ?? '', 0.85, 0.85); ctx.fill();
+      ctx.fillStyle = oklch(0.82, 0.01, 250, 0.55); ctx.fill();
     }
 
     // nucleus ring: tokens / budget

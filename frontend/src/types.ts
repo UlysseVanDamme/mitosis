@@ -46,7 +46,7 @@ export interface AppNotification {
 
 export interface HandoverItem {
   conflict_id: string; plain_summary: string; sides: Side[];
-  impacts: string[] | Impact[] | string; owner: string; status: string;
+  impacts: string[] | Impact[] | string; owner: string; status: string; kind?: string; hero?: boolean;
 }
 export interface Handover { client: string; items: HandoverItem[] }
 
@@ -167,7 +167,7 @@ export type MitosisEvent =
   | { type: 'split_started'; ts: number; agent_id: string; tokens: number; budget: number }
   | { type: 'agent_split'; ts: number; split: Split; parent: Agent; children: Agent[] }
   | { type: 'agent_updated'; ts: number; agent: Agent }
-  | { type: 'query_started'; ts: number; query_id: string; question: string; user: string }
+  | { type: 'query_started'; ts: number; query_id: string; question: string; user: string; replayed?: boolean }
   | { type: 'query_routed'; ts: number; query_id: string; path: string[]; leaves: string[]; confidences: Record<string, number>; router?: Router; margin?: number | null; ms?: number }
   | { type: 'leaf_answer'; ts: number; query_id: string; agent_id: string; answer: string; citations: string[] }
   | { type: 'query_answer'; ts: number; query_id: string; answer: string; citations: Citation[]; conflicts: Conflict[]; trust: number | Trust; owners: string[]; leaves: string[]; assessment?: Assessment }

@@ -33,6 +33,11 @@ export function sidesOf(c: Conflict, s: AppState): Side[] {
   });
 }
 
+/** Drop internal claim ids like "(C31)" or "C183" from LLM prose. */
+export function noIds(t: string) {
+  return t.replace(/\s*\((?:C\d+(?:,\s*)?)+\)/g, '').replace(/\bC\d+\b/g, 'the source').trim();
+}
+
 function rank(cs: Conflict[]) {
   return [...cs].sort((a, b) => Number(!!b.hero) - Number(!!a.hero) || (KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9));
 }
@@ -99,8 +104,9 @@ export function HandoverList({ h }: { h: Handover }) {
   const s = useStore((x) => x);
   return (
     <>
-      <h2>{h.items.length === 3 ? '3' : h.items.length} things you should know about {h.client}</h2>
-      {h.items.map((it, i) => {
+      <h2>{Math.min(3, h.items.length)} things you should know about {h.client}</h2>
+      {[...h.items].sort((x, y) => (Array.isArray(y.impacts) ? y.impacts.length : 0) - (Array.isArray(x.impacts) ? x.impacts.length : 0)
+        || Number(y.kind === 'forecast_vs_final') - Number(x.kind === 'forecast_vs_final')).slice(0, 3).map((it, i) => {
         const c = s.conflicts.get(it.conflict_id);
         const status = c?.status ?? it.status;
         const win = it.sides.find((x) => x.wins);
@@ -109,8 +115,8 @@ export function HandoverList({ h }: { h: Handover }) {
           <button key={it.conflict_id} className={`ho ${status}`} onClick={() => patch({ selectedConflict: it.conflict_id })}>
             <span className="ho-n">{i + 1}</span>
             <span className="ho-b">
-              <span className="row-t">{it.plain_summary}{win ? <>: <b>{win.value}</b></> : null}</span>
-              <span className="row-m">{imp ? `${imp} · ` : ''}{status === 'verified' ? `verified by ${c?.verified_by ?? it.owner}` : `owner ${it.owner}`}</span>
+              <span className="row-t">{noIds(c?.summary || it.plain_summary)}</span>
+              <span className="row-m">{it.plain_summary}{win && win.value.length < 30 ? <>: <b>{win.value}</b></> : null}{imp ? ` · ${imp}` : ''} · {status === 'verified' ? `verified by ${c?.verified_by ?? it.owner}` : `owner ${it.owner}`}</span>
             </span>
           </button>
         );
@@ -147,7 +153,7 @@ function ConflictView({ c }: { c: Conflict }) {
           </div>
         ))}
       </div>
-      <p>{c.resolution}</p>
+      <p>{noIds(c.resolution)}</p>
       {impact && <p className="impact">{impact.summary}</p>}
       {c.status === 'verified'
         ? <p className="ok-line">Verified by {c.verified_by ?? owner}</p>
@@ -184,7 +190,7 @@ function AgentView({ id }: { id: string }) {
 
 // ---------- answer card: three levels ----------
 function headline(t: string) {
-  const clean = t.replace(/^\(fake\)\s*/, '').replace(/\s*\[[^\]]+\]/g, '');
+  const clean = t.replace(/\*\*/g, '').replace(/^\(fake\)\s*/, '').replace(/\s*\[[^\]]+\]/g, '');
   const parts = clean.split(/(?<=[.!?])\s+/);
   let out = parts[0] ?? clean;
   if (out.length < 70 && parts[1]) out += ' ' + parts[1];
@@ -248,7 +254,7 @@ export function AskBar() {
   const ask = async (question: string) => {
     if (!question.trim()) return;
     setBusy(true);
-    try { const { query_id } = await api.query(question.trim(), user); patch({ activeQueryId: query_id }); } catch (e) { console.error(e); } finally { setBusy(false); }
+    try { const { query_id } = await api.query(question.trim(), user); patch({ activeQueryId: query_id }); (document.activeElement as HTMLElement | null)?.blur(); } catch (e) { console.error(e); } finally { setBusy(false); }
   };
   return (
     <div className="askbar" onFocus={() => setFocus(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocus(false); }}>

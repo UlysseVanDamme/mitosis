@@ -619,7 +619,7 @@ class Swarm:
             return {"client": None, "items": []}
         p = principal(user)
         cs = [c for c in self.conflicts.values() if self._visible_conflict(c, p) and self.affects_client(c, client)]
-        cs.sort(key=lambda c: (not c.hero, c.status != "open", c.conflict_id))
+        cs.sort(key=lambda c: (not c.hero, -len(c.impacts), c.kind != "forecast_vs_final", c.status != "open", c.conflict_id))
         items = []
         for c in cs[:5]:
             a = self.agents.get(c.agent_id)
