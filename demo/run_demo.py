@@ -215,7 +215,7 @@ async def ask(client: httpx.AsyncClient, stream: Stream, q: dict, baseline: bool
     r.raise_for_status()
     qid = r.json().get("query_id")
 
-    base_task = asyncio.create_task(run_baseline(client, question)) if baseline else None
+    base_task = asyncio.create_task(run_baseline(client, question, qid)) if baseline else None
     ev = await stream.wait(lambda e: e.get("type") == "query_answer" and e.get("query_id") == qid,
                            timeout, start=mark)
     if ev is None and qid:  # stream missed it: poll
@@ -228,9 +228,10 @@ async def ask(client: httpx.AsyncClient, stream: Stream, q: dict, baseline: bool
     con.print(Columns(panels, equal=True, expand=True))
 
 
-async def run_baseline(client: httpx.AsyncClient, question: str) -> dict | None:
+async def run_baseline(client: httpx.AsyncClient, question: str, qid: str | None = None) -> dict | None:
+    # Pass the query id so the browser shows this baseline in the same answer card.
     try:
-        r = await client.post("/api/baseline", json={"question": question}, timeout=120)
+        r = await client.post("/api/baseline", json={"question": question, "query_id": qid}, timeout=120)
         r.raise_for_status()
         return r.json()
     except (httpx.HTTPError, ValueError) as e:
