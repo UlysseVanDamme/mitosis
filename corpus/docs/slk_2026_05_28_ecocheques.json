@@ -1,0 +1,15 @@
+{
+  "doc_id": "slk_2026_05_28_ecocheques",
+  "title": "#payroll-be: eco-cheque reference period",
+  "source": "#payroll-be Slack",
+  "source_type": "slack",
+  "url": null,
+  "author": "#payroll-be",
+  "date": "2026-05-28",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": null,
+  "topic": "eco-cheques",
+  "access_group": "internal",
+  "text": "#payroll-be, 28 May 2026\n\nBram Wuyts: for the June eco-cheques, which period counts?\n\nTom Vandenberghe: calendar year 2025, 1 January to 31 December 2025. Full-time all year = 250 euro.\n\nBram Wuyts: ok, running the pro-rata on calendar 2025 then."
+}

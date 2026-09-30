@@ -1,0 +1,15 @@
+{
+  "doc_id": "cfg_vandessel",
+  "title": "Client config: Brouwerij Van Dessel NV",
+  "source": "SD Worx client file",
+  "source_type": "cao",
+  "url": null,
+  "author": "Jan Peeters",
+  "date": "2025-11-28",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": "Brouwerij Van Dessel",
+  "topic": "indexation",
+  "access_group": "client:Brouwerij Van Dessel",
+  "text": "Payroll client config sheet. Client: Brouwerij Van Dessel NV (client number BE-40217). Joint committee:\nPC 200 (132 employees). Consultant: Jan Peeters (PC 200 owner). Migrated to the new payroll engine on\n28 November 2025.\n\nDeviations from sector defaults:\n- Indexation: company CAO 2019. Index date 1 February (not 1 January); base = gross base salary\n  excluding brouwerijpremie. Flag IDX_COMPANY_CAO = required. NOTE after migration: flag to be\n  re-entered, not carried over automatically.\n- Brouwerijpremie: 145 euro/month, +2% every 1 July.\n- Eco-cheques: converted into a yearly bicycle allowance of equivalent value (company CAO 2023). Skip\n  eco-cheque run.\n- Meal vouchers: 8 euro, employer share 6.91 euro. Increase to 10 euro only after signed CAO.\n- Telework allowance: fixed 90 euro/month (not the maximum).\n\nContacts at client: Els Van Dessel (HR manager), Wim Van Dessel (CFO)."
+}

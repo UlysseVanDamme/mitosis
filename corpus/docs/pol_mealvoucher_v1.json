@@ -1,0 +1,15 @@
+{
+  "doc_id": "pol_mealvoucher_v1",
+  "title": "Policy PAY-MV-02 v1: meal vouchers",
+  "source": "SD Worx policy wiki",
+  "source_type": "policy",
+  "url": null,
+  "author": "Inge Vermeulen",
+  "date": "2024-01-15",
+  "country": "BE",
+  "pc": null,
+  "client": null,
+  "topic": "meal vouchers",
+  "access_group": "internal",
+  "text": "Policy PAY-MV-02, version 1 (valid from 15 January 2024).\n\n- Maximum face value of a meal voucher: 8 euro.\n- Maximum employer share: 6.91 euro. Minimum employee share: 1.09 euro.\n- One voucher per day actually worked.\n- The voucher value per client is stored in the client config; changes require the client's CAO or\n  individual agreement."
+}

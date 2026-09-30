@@ -1,0 +1,15 @@
+{
+  "doc_id": "tkt_2026_0140_delta",
+  "title": "Ticket T-2026-0140: telework allowance still 157.83",
+  "source": "SD Worx helpdesk",
+  "source_type": "ticket",
+  "url": null,
+  "author": "Helpdesk",
+  "date": "2026-04-02",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": "Softwarehuis Delta",
+  "topic": "telework allowance",
+  "access_group": "client:Softwarehuis Delta",
+  "text": "Ticket T-2026-0140. Client: Softwarehuis Delta BV. Status: CLOSED (2026-04-04).\n\nIssue: \"We pay our developers the maximum telework allowance. March payslips still show 157.83 euro.\"\n\nAnswer: the maximum rose to 160.99 euro per month from 1 March 2026. Delta's config had a fixed amount\nof 157.83 instead of the flag 'maximum'. We changed it to 'maximum' and paid the March difference in the\nApril run. From now on Delta follows the central maximum automatically."
+}

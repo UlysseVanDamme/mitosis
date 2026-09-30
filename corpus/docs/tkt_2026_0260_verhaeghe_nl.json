@@ -1,0 +1,15 @@
+{
+  "doc_id": "tkt_2026_0260_verhaeghe_nl",
+  "title": "Ticket T-2026-0260: NL warehouse wages below minimum?",
+  "source": "SD Worx helpdesk",
+  "source_type": "ticket",
+  "url": null,
+  "author": "Helpdesk",
+  "date": "2026-07-08",
+  "country": "NL",
+  "pc": null,
+  "client": "Verhaeghe Logistics",
+  "topic": "minimum wage",
+  "access_group": "client:Verhaeghe Logistics",
+  "text": "Ticket T-2026-0260. Client: Verhaeghe Logistics Nederland B.V. Status: OPEN.\n\nIssue: \"Six warehouse employees are paid 14.75 euro per hour. A union rep says this is below the minimum\nsince July.\"\n\nAnalysis (Emma de Vries): correct. From 1 July 2026 the Dutch statutory minimum wage for employees aged\n21+ is 14.99 euro per hour (14.71 euro from 1 January to 30 June 2026). The July run used 14.75 because\nthe hourly wages are fixed in the employee records. Raise the six employees to at least 14.99 euro from\n1 July and pay the difference in the August run."
+}

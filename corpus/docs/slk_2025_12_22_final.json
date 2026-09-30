@@ -1,0 +1,15 @@
+{
+  "doc_id": "slk_2025_12_22_final",
+  "title": "#payroll-be: PC 200 final is 2.21%",
+  "source": "#payroll-be Slack",
+  "source_type": "slack",
+  "url": null,
+  "author": "#payroll-be",
+  "date": "2025-12-22",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": null,
+  "topic": "indexation",
+  "access_group": "internal",
+  "text": "#payroll-be, 22 Dec 2025\n\nJan Peeters: Final figure PC 200 is in: 2.21% on 1 January 2026 (Agoria, Acerta, Securex all\nconfirm). Knowledge desk updates the central parameter on 24 Dec. Anyone who put a manual 2.13 override\nin a client config: remove it, the central update does not overwrite overrides!\n\nInge Vermeulen: confirmed, central parameter IDX_PC200_2026 = 2.21 scheduled.\n\nLien Desmet: Mertens has no override, good.\n\nTom Vandenberghe: on holiday until 5 Jan, will check Delta after."
+}

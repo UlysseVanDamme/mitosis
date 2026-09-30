@@ -1,0 +1,128 @@
+{
+  "waves": [
+    {
+      "name": "1. Official Belgian sources",
+      "doc_ids": [
+        "be_agoria_pc200_index_2026",
+        "be_acerta_pc200_index_2026",
+        "be_securex_pc200_index_2026",
+        "be_sdworx_press_pc200_221",
+        "be_orbiss_pc200_221",
+        "be_bbtk_indexeringen_jan2026",
+        "be_pc200_ecocheques",
+        "be_pc200_eindejaarspremie",
+        "be_pc124_index_q1_2026",
+        "be_pc302_index_2026",
+        "be_sdworx_press_food_horeca_transport",
+        "be_pc111_index_jul2026",
+        "be_flexijobs_2026",
+        "be_mealvouchers_2026",
+        "be_telework_2025",
+        "be_telework_2026",
+        "be_timecredit_2026"
+      ]
+    },
+    {
+      "name": "2. Forecasts, sector news and outlooks",
+      "doc_ids": [
+        "be_propay_forecast_pc200",
+        "int_outlook_2025_11",
+        "int_outlook_2025_12_final",
+        "int_horeca_outlook_2025_11",
+        "int_index_calendar_2026",
+        "int_lu_outlook_2026_03",
+        "int_mealvoucher_news_2025_12",
+        "int_centenindex_note_2026"
+      ]
+    },
+    {
+      "name": "3. Internal policies v1/v2, ownership, FAQ",
+      "doc_ids": [
+        "pol_index_v1",
+        "pol_index_v2",
+        "pol_mealvoucher_v1",
+        "pol_mealvoucher_v2",
+        "pol_telework_v1",
+        "pol_telework_v2",
+        "pol_ecocheque_v1",
+        "pol_ecocheque_v2",
+        "pol_eoy_v1",
+        "pol_eoy_v2",
+        "pol_flexi_v1",
+        "pol_access_client_data",
+        "onb_ownership_2024",
+        "onb_ownership_2025_update",
+        "faq_holiday_pay",
+        "faq_dimona",
+        "faq_timecredit"
+      ]
+    },
+    {
+      "name": "4. Helpdesk tickets and #payroll-be Slack",
+      "doc_ids": [
+        "tkt_2025_0870_vandessel",
+        "tkt_2026_0012_delta",
+        "tkt_2026_0015_vandessel",
+        "tkt_2026_0019_mertens",
+        "tkt_2026_0021_maes",
+        "tkt_2026_0024_az",
+        "tkt_2026_0027_goudenlepel",
+        "tkt_2026_0102_vandessel",
+        "tkt_2026_0140_delta",
+        "tkt_2026_0188_vandessel",
+        "tkt_2026_0201_goudenlepel",
+        "tkt_2026_0230_verhaeghe",
+        "tkt_2026_0305_mertens",
+        "tkt_2026_0311_delta",
+        "slk_2025_10_15_preload",
+        "slk_2025_12_22_final",
+        "slk_2025_12_23_horeca",
+        "slk_2026_01_06_pc124",
+        "slk_2026_01_02_mealvouchers",
+        "slk_2026_01_09_vandessel",
+        "slk_2026_01_05_owner",
+        "slk_2026_05_28_ecocheques",
+        "slk_2026_09_01_telework",
+        "slk_2026_06_30_flexi",
+        "slk_2026_01_12_pc330",
+        "slk_2026_03_20_lu"
+      ]
+    },
+    {
+      "name": "5. Client CAOs, configs and emails",
+      "doc_ids": [
+        "cao_vandessel_2019",
+        "cfg_vandessel",
+        "cao_vandessel_2023_bike",
+        "cfg_delta",
+        "cfg_mertens",
+        "cfg_maes",
+        "cfg_az",
+        "cfg_goudenlepel",
+        "cfg_verhaeghe",
+        "eml_vandessel_budget",
+        "eml_delta_complaint",
+        "eml_goudenlepel_flexi",
+        "eml_maes_recovery",
+        "eml_az_ific"
+      ]
+    },
+    {
+      "name": "6. Netherlands and Luxembourg",
+      "doc_ids": [
+        "nl_minimumloon_jan2026",
+        "nl_minimumloon_jul2026",
+        "nl_30pct_ruling_2026",
+        "lu_ssm_2026",
+        "lu_index_june2026",
+        "int_crossborder_policy",
+        "int_nl_faq_vakantiegeld",
+        "slk_xb_2026_06_nl",
+        "eml_verhaeghe_nl_30pct",
+        "tkt_2026_0260_verhaeghe_nl",
+        "tkt_2026_0244_verhaeghe_lu",
+        "eml_verhaeghe_lu_frontaliers"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "doc_id": "pol_ecocheque_v1",
+  "title": "Policy PAY-ECO-04 v1: eco-cheques PC 200",
+  "source": "SD Worx policy wiki",
+  "source_type": "policy",
+  "url": null,
+  "author": "Koen Janssens",
+  "date": "2024-04-10",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": null,
+  "topic": "eco-cheques",
+  "access_group": "internal",
+  "text": "Policy PAY-ECO-04, version 1 (valid from April 2024). Owner at the time: Koen Janssens (PC 200).\n\nEco-cheques for PC 200 employees: 250 euro for a full-time employee over the full reference period,\npaid with the June payroll. Reference period: 1 June of the previous year to 31 May of the current\nyear. Part-timers: pro rata according to the sector scale. Payment on electronic card via the issuer\nchosen by the client."
+}

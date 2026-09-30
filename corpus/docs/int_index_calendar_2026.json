@@ -1,0 +1,15 @@
+{
+  "doc_id": "int_index_calendar_2026",
+  "title": "Index calendar 2026 per joint committee (internal cheat sheet)",
+  "source": "SD Worx Knowledge desk",
+  "source_type": "faq",
+  "url": null,
+  "author": "Inge Vermeulen",
+  "date": "2026-01-10",
+  "country": "BE",
+  "pc": null,
+  "client": null,
+  "topic": "indexation",
+  "access_group": "internal",
+  "text": "Cheat sheet: when does which joint committee index in 2026? Always check the client config for\ncompany CAOs that deviate.\n\n- PC 200 (employees, supplementary): once a year, 1 January. 2026: 2.21%.\n- PC 124 (construction workers): quarterly, 1 January / 1 April / 1 July / 1 October. January 2026:\n  0.21859%.\n- PC 111 (metal workers) and PC 209: once a year, 1 July. July 2026: 2.81%.\n- PC 302 (horeca): once a year, 1 January. 2026: 2.189%.\n- PC 140.03 (road transport): 1 January. 2026: 2.18%.\n- PC 330 (health care): the month after the public-sector pivot index is exceeded. January 2026: 2%.\n\nCommon mistake: copying the PC 200 figure to clients in other joint committees. The helpdesk saw\nseveral of these in the first week of January 2026.\n\nOwner: Knowledge desk (Inge Vermeulen). PC-specific questions go to the PC owner (see onboarding\nownership note)."
+}

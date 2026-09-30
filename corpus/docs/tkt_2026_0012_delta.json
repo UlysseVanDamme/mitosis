@@ -1,0 +1,15 @@
+{
+  "doc_id": "tkt_2026_0012_delta",
+  "title": "Ticket T-2026-0012: January payslips indexed at 2.13% instead of 2.21%",
+  "source": "SD Worx helpdesk",
+  "source_type": "ticket",
+  "url": null,
+  "author": "Helpdesk",
+  "date": "2026-01-06",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": "Softwarehuis Delta",
+  "topic": "indexation",
+  "access_group": "client:Softwarehuis Delta",
+  "text": "Ticket T-2026-0012. Client: Softwarehuis Delta BV (PC 200, 84 employees). Status: OPEN.\nOpened by: Pieter Goossens, finance director. Priority: high.\n\nIssue: \"Our employees' January 2026 payslips show an indexation of 2.13%. The press says PC 200 is\nindexed by 2.21%. Which one is right, and will the difference be paid?\"\n\nHelpdesk analysis (2026-01-07): in October 2025 the consultant manually loaded the Pro-Pay forecast of\n2.13% in the Delta client config (override \"IDX_PC200_2026 = 2.13\"), before the new indexation policy\nforbade forecasts. The central update to 2.21% on 24 December did not overwrite the manual override.\n\nCorrect figure: 2.21% on 1 January 2026 (final PC 200 indexation). Delta has no company CAO that\ndeviates from the sector rule.\n\nNext step: remove the override, apply 2.21% and pay the 0.08 percentage point difference for January\nretroactively. Assigned to: Jan Peeters. Waiting for client approval of the correction run."
+}

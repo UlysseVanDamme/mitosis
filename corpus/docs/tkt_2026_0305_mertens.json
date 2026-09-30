@@ -1,0 +1,15 @@
+{
+  "doc_id": "tkt_2026_0305_mertens",
+  "title": "Ticket T-2026-0305: year-end bonus and temporary unemployment",
+  "source": "SD Worx helpdesk",
+  "source_type": "ticket",
+  "url": null,
+  "author": "Helpdesk",
+  "date": "2026-09-15",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": "Mertens Interieur",
+  "topic": "year-end bonus",
+  "access_group": "client:Mertens Interieur",
+  "text": "Ticket T-2026-0305. Client: Mertens Interieur BV. Status: OPEN.\n\nQuestion: \"Three joiners had 5 days of temporary unemployment in March 2026 (supplier problem). Does\nthat reduce their year-end bonus in December?\"\n\nAnswer draft (Jan Peeters): no. From 2026, 5 days of temporary unemployment are treated as worked days\nfor the PC 200 year-end bonus (policy PAY-EOY-05 v2). The bonus equals the December gross monthly\nsalary, pro rata only for other absences. Note: the joiners are PC 200 employees in your config."
+}

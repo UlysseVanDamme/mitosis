@@ -1,0 +1,15 @@
+{
+  "doc_id": "cfg_maes",
+  "title": "Client config: Bouwgroep Maes NV",
+  "source": "SD Worx client file",
+  "source_type": "cao",
+  "url": null,
+  "author": "Sofie Claes",
+  "date": "2025-10-01",
+  "country": "BE",
+  "pc": "PC 124",
+  "client": "Bouwgroep Maes",
+  "topic": "indexation",
+  "access_group": "client:Bouwgroep Maes",
+  "text": "Payroll client config sheet. Client: Bouwgroep Maes NV, Roeselare (client number BE-29944).\n\nTwo populations:\n- 58 construction workers in PC 124: quarterly indexation (1 January, 1 April, 1 July, 1 October)\n  on hourly wages, plus the food and housing allowance. Fidelity and weather stamps via the sector fund.\n- 9 office employees in PC 200: annual indexation on 1 January (sector rule).\n\nNever apply one population's indexation to the other. Consultant for PC 124: Sofie Claes. PC 200 part:\nLien Desmet. Contacts: Ruben Maes (managing director)."
+}

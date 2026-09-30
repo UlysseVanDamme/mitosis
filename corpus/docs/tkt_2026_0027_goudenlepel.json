@@ -1,0 +1,15 @@
+{
+  "doc_id": "tkt_2026_0027_goudenlepel",
+  "title": "Ticket T-2026-0027: horeca index loaded at 2.1%",
+  "source": "SD Worx helpdesk",
+  "source_type": "ticket",
+  "url": null,
+  "author": "Helpdesk",
+  "date": "2026-01-08",
+  "country": "BE",
+  "pc": "PC 302",
+  "client": "Restogroep De Gouden Lepel",
+  "topic": "indexation",
+  "access_group": "client:Restogroep De Gouden Lepel",
+  "text": "Ticket T-2026-0027. Client: Restogroep De Gouden Lepel (6 restaurants, PC 302). Status: OPEN.\n\nIssue: \"Our payroll shows an indexation of 2.1% on the hourly wages. Our accountant says the horeca\nindex is 2.189%.\"\n\nHelpdesk analysis: the client config still contained the horeca desk estimate of November 2025 (about\n2.1%). The final PC 302 indexation on 1 January 2026 is 2.189% on minimum and actual hourly wages; the\nnight supplement becomes 1.6209 euro per hour and the work clothing compensation 2.20 euro per day.\n\nNext step: correct to 2.189% and pay the difference in the February run. Assigned to Karim El Amrani."
+}

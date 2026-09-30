@@ -1,0 +1,15 @@
+{
+  "doc_id": "pol_index_v1",
+  "title": "Policy PAY-IDX-01 v1: processing sector indexations",
+  "source": "SD Worx policy wiki",
+  "source_type": "policy",
+  "url": null,
+  "author": "Inge Vermeulen",
+  "date": "2024-03-01",
+  "country": "BE",
+  "pc": null,
+  "client": null,
+  "topic": "indexation",
+  "access_group": "internal",
+  "text": "Policy PAY-IDX-01, version 1 (valid from 1 March 2024).\n\nScope: all Belgian clients, all joint committees with an annual indexation on 1 January.\n\n1. The payroll cut-off for January payroll is 20 December.\n2. If the final sector indexation percentage is not published by 20 December, the consultant applies\n   the most recent published forecast (e.g. Pro-Pay, or our own Payroll Pulse outlook) so that the\n   January payslip already contains an indexation.\n3. When the final figure is published, the difference is corrected in the February payroll\n   (retroactive correction for January).\n4. The consultant logs the forecast used in the client file.\n\nRationale: employees expect to see the index on the January payslip.\n\nOwner: Knowledge desk, Inge Vermeulen."
+}

@@ -1,0 +1,15 @@
+{
+  "doc_id": "tkt_2026_0102_vandessel",
+  "title": "Ticket T-2026-0102: meal vouchers to 10 euro?",
+  "source": "SD Worx helpdesk",
+  "source_type": "ticket",
+  "url": null,
+  "author": "Helpdesk",
+  "date": "2026-02-03",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": "Brouwerij Van Dessel",
+  "topic": "meal vouchers",
+  "access_group": "client:Brouwerij Van Dessel",
+  "text": "Ticket T-2026-0102. Client: Brouwerij Van Dessel NV. Status: OPEN (waiting for client).\n\nQuestion: \"Can we raise the meal vouchers to the new maximum of 10 euro from March?\"\n\nAnswer (Jan Peeters): yes, from 1 January 2026 the employer share may go up to 8.91 euro (minimum\nemployee share 1.09 euro). But the increase is not automatic: we need a signed company CAO with your\nunion delegation before we change your config. Your current config is 8 euro (employer share 6.91\neuro). Please send the signed CAO; we will apply it from the first month after signature."
+}

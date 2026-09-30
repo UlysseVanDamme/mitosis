@@ -1,0 +1,15 @@
+{
+  "doc_id": "tkt_2026_0201_goudenlepel",
+  "title": "Ticket T-2026-0201: flexi-jobber rate blocked",
+  "source": "SD Worx helpdesk",
+  "source_type": "ticket",
+  "url": null,
+  "author": "Helpdesk",
+  "date": "2026-07-06",
+  "country": "BE",
+  "pc": "PC 302",
+  "client": "Restogroep De Gouden Lepel",
+  "topic": "flexi-jobs",
+  "access_group": "client:Restogroep De Gouden Lepel",
+  "text": "Ticket T-2026-0201. Client: Restogroep De Gouden Lepel. Status: OPEN.\n\nIssue: \"The system refuses the 22.50 euro/hour flexi rate for our weekend sommelier since July.\"\n\nAnswer (Karim El Amrani): from 1 July 2026 there is a maximum flexi-wage of 21 euro per hour in horeca\n(PC 302), subject to indexation. 22.50 euro is above the cap. Options: pay 21 euro/hour as flexi-job,\nor employ the sommelier under a regular part-time contract. Waiting for the client's choice."
+}

@@ -1,0 +1,15 @@
+{
+  "doc_id": "pol_eoy_v1",
+  "title": "Policy PAY-EOY-05 v1: year-end bonus PC 200",
+  "source": "SD Worx policy wiki",
+  "source_type": "policy",
+  "url": null,
+  "author": "Koen Janssens",
+  "date": "2024-09-01",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": null,
+  "topic": "year-end bonus",
+  "access_group": "internal",
+  "text": "Policy PAY-EOY-05, version 1 (valid from September 2024).\n\nYear-end bonus PC 200 = December gross monthly salary, paid with the December payroll. Condition: six\nmonths of seniority. Pro rata for incomplete years. Temporary unemployment days are NOT treated as\nworked days for the calculation."
+}

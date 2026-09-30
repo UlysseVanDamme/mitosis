@@ -1,0 +1,15 @@
+{
+  "doc_id": "pol_ecocheque_v2",
+  "title": "Policy PAY-ECO-04 v2: eco-cheques PC 200 and conversions",
+  "source": "SD Worx policy wiki",
+  "source_type": "policy",
+  "url": null,
+  "author": "Jan Peeters",
+  "date": "2025-10-01",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": null,
+  "topic": "eco-cheques",
+  "access_group": "internal",
+  "text": "Policy PAY-ECO-04, version 2 (valid from 1 October 2025). Owner: Jan Peeters (PC 200).\n\nUnchanged: 250 euro for full-time over the full reference period 1 June - 31 May, paid in June.\n\nNew: clients may convert eco-cheques into an equivalent benefit through a company CAO. If a client\nconfig contains a conversion, the eco-cheque run must skip that client. Brouwerij Van Dessel and\nMertens Interieur have such a conversion on file (see client configs)."
+}

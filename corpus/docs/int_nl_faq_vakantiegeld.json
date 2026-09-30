@@ -1,0 +1,15 @@
+{
+  "doc_id": "int_nl_faq_vakantiegeld",
+  "title": "FAQ NL: holiday allowance and minimum wage checks",
+  "source": "SD Worx internal FAQ",
+  "source_type": "faq",
+  "url": null,
+  "author": "Emma de Vries",
+  "date": "2026-02-10",
+  "country": "NL",
+  "pc": null,
+  "client": null,
+  "topic": "minimum wage",
+  "access_group": "internal",
+  "text": "Q: What is the Dutch holiday allowance (vakantiegeld)?\nA: At least 8% of the gross annual wage, usually paid in May or June. A CAO can grant more.\n\nQ: How do we check the minimum wage in NL payroll?\nA: The statutory minimum is an hourly amount and changes on 1 January and 1 July. Always compare the\nhourly wage with the rate valid on the pay date. Warehouse and logistics staff are often close to the\nminimum; flag them before each 1 January and 1 July update.\n\nOwner: Emma de Vries."
+}

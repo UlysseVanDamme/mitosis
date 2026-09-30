@@ -1,0 +1,15 @@
+{
+  "doc_id": "int_crossborder_policy",
+  "title": "Policy PAY-XB-07: NL and LU entities of Belgian clients",
+  "source": "SD Worx policy wiki",
+  "source_type": "policy",
+  "url": null,
+  "author": "Emma de Vries",
+  "date": "2025-09-15",
+  "country": "NL",
+  "pc": null,
+  "client": null,
+  "topic": "ownership",
+  "access_group": "internal",
+  "text": "Policy PAY-XB-07 (valid from 15 September 2025).\n\nBelgian clients with Dutch or Luxembourg entities are served by the cross-border desk. Belgian sector\nrules (joint committees, PC indexations, eco-cheques) never apply to these entities.\n\n- Netherlands: statutory minimum wage (indexed 1 January and 1 July), sector CAOs where applicable, the\n  30% ruling for eligible expats, holiday allowance of at least 8%. Owner: Emma de Vries (Utrecht).\n- Luxembourg: automatic index tranches of 2.5% applied from the month the tranche is triggered, social\n  minimum wage (SSM). Owner: Marc Schmit.\n\nCross-border questions from Belgian consultants go to the desk, not to the PC owners."
+}

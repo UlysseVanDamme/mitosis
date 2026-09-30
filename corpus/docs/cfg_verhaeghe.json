@@ -1,0 +1,15 @@
+{
+  "doc_id": "cfg_verhaeghe",
+  "title": "Client config: Verhaeghe Logistics group",
+  "source": "SD Worx client file",
+  "source_type": "cao",
+  "url": null,
+  "author": "Tom Vandenberghe",
+  "date": "2025-12-01",
+  "country": "BE",
+  "pc": "PC 140",
+  "client": "Verhaeghe Logistics",
+  "topic": "indexation",
+  "access_group": "client:Verhaeghe Logistics",
+  "text": "Payroll client config sheet. Client: Verhaeghe Logistics NV, Zeebrugge (client number BE-47730).\n\nBelgian entity: 210 drivers and warehouse workers in PC 140.03 (indexation 1 January), 35 office\nemployees in PC 200.\n\nForeign entities (handled by the cross-border desk):\n- Verhaeghe Logistics Nederland B.V., Rotterdam: 40 employees, Dutch payroll, Dutch statutory minimum\n  wage and the 30% ruling for 3 expats. Owner: Emma de Vries.\n- Verhaeghe Logistics Luxembourg S.à r.l., Bettembourg: 18 employees, Luxembourg automatic index.\n  Owner: Marc Schmit.\nConsultant BE: Tom Vandenberghe. Contacts: Nathalie Verhaeghe (group HR)."
+}
