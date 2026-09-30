@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-STATE_DIR = Path(__file__).resolve().parent.parent / "state"
+# MITOSIS_STATE_DIR lets a second server run from the same checkout without sharing logs/snapshots
+STATE_DIR = Path(os.environ.get("MITOSIS_STATE_DIR") or Path(__file__).resolve().parent.parent / "state")
 
 
 def _jsonable(obj: Any) -> Any:

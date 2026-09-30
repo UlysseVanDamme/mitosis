@@ -34,9 +34,10 @@ from rich.text import Text
 
 ROOT = Path(__file__).resolve().parent.parent
 GOLDEN = ROOT / "corpus" / "golden_questions.json"
-EVENTS_LOG = ROOT / "backend" / "state" / "events.jsonl"
+STATE = Path(os.environ.get("MITOSIS_STATE_DIR") or ROOT / "backend" / "state")
+EVENTS_LOG = STATE / "events.jsonl"
 RECORDINGS = ROOT / "demo" / "recordings"
-PASSCODES = ROOT / "backend" / "state" / "demo_passcodes.json"
+PASSCODES = STATE / "demo_passcodes.json"
 ADMIN = "desk"  # reset / ingest / replay are admin-only
 # golden-question "user" -> demo login. Queries run as sofie so the UI (logged in as sofie) shows them;
 # a query's results are visible only to its creator.

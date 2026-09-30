@@ -480,7 +480,7 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
             if p.parent != base or p.suffix != ".jsonl" or not p.is_file():
                 raise HTTPException(404, "recording not found")
             return p
-        cands = [base / "recorded.jsonl", *sorted(base.glob("*.jsonl")),
+        cands = [base / "golden.jsonl", base / "recorded.jsonl", *sorted(base.glob("*.jsonl")),
                  STATE_DIR / "recorded.jsonl", STATE_DIR / "events.prev.jsonl"]
         p = next((c for c in cands if c.is_file() and c.stat().st_size > 0), None)
         if p is None:
