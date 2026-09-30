@@ -317,8 +317,11 @@ export class Scene {
 
     // Camera fits the colony.
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    // During a query, frame the routed path (root -> leaves) so the answering cells are big enough to read.
+    const focus = this.queryLeaves.size > 0;
     for (const n of this.nodes.values()) {
-      const r = (n.hub > 0.5 ? 10 : n.r) + 34;
+      if (focus && !(this.queryLeaves.has(n.id) || this.queryPath.has(n.id) || n.id === 'A0')) continue;
+      const r = (n.hub > 0.5 ? 10 : n.r) + (focus ? 90 : 34);
       x0 = Math.min(x0, (n.x ?? 0) - r); x1 = Math.max(x1, (n.x ?? 0) + r);
       y0 = Math.min(y0, (n.y ?? 0) - r); y1 = Math.max(y1, (n.y ?? 0) + r + 16);
     }
@@ -326,7 +329,7 @@ export class Scene {
     // Visible window: leave room for the ticker (top-left) and legend (bottom).
     const top = this.insetBottom ? 24 : 84, bottom = this.insetBottom ? 16 : 118;
     const vw = this.w - 60, vh = this.h - this.insetBottom - top - bottom;
-    const k = Math.min(vw / (x1 - x0), vh / (y1 - y0), 3);
+    const k = Math.min(vw / (x1 - x0), vh / (y1 - y0), focus ? 1.6 : 3);
     // Zoom out quickly (never clip), zoom in slowly.
     const ease = (r: number) => 1 - Math.pow(1 - r, this.dt / 16.7);
     this.cam.k += (k - this.cam.k) * ease(k < this.cam.k ? 0.09 : 0.03);
