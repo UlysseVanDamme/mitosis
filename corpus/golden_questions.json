@@ -1,0 +1,195 @@
+[
+  {
+    "id": "G01",
+    "user": "consultant",
+    "question": "What is the PC 200 salary indexation on 1 January 2026?",
+    "expected_answer": "2.21% on 1 January 2026, final figure (Agoria 22 Dec 2025, confirmed by Acerta, Securex and the SD Worx press release), applied to effectively paid salaries, the PC 200 minimum scales and the guaranteed minimum monthly income. Acerta's formula: (133.07+133.33)/(130.22+130.42) on the smoothed health index. The 2.13% figure is the Pro-Pay forecast of 14 October 2025 and is outdated.",
+    "key_doc_ids": [
+      "be_agoria_pc200_index_2026",
+      "be_acerta_pc200_index_2026",
+      "be_securex_pc200_index_2026",
+      "be_propay_forecast_pc200",
+      "slk_2025_12_22_final"
+    ],
+    "why_plain_rag_fails": "The Pro-Pay forecast, the Oct 2025 Slack preload thread and Delta's config all literally say 'PC 200 January 2026 2.13%'; BM25 top-4 easily returns two 2.13% chunks and blends them with 2.21% or picks the forecast.",
+    "wow": "Answer shows the forecast_vs_final conflict side by side (2.13% forecast 14 Oct 2025 vs 2.21% final 22 Dec 2025), trust high because three independent official sources agree, owner Jan Peeters."
+  },
+  {
+    "id": "G02",
+    "user": "consultant",
+    "question": "What indexation should Brouwerij Van Dessel apply in January and February 2026, and on which salary components?",
+    "expected_answer": "Company CAO of 27 June 2019 overrides the PC 200 sector default: the 2.21% PC 200 figure is applied on 1 February 2026 (not 1 January) and only to the gross base salary, excluding the brouwerijpremie of 145 euro/month. January 2026 is paid without indexation, except where the base salary would fall below the indexed sector minimum (then the sector minimum applies from 1 January). The brouwerijpremie gets its own fixed +2% on 1 July 2026. Ticket T-2026-0015 is open because the engine applied 2.21% on 1 January on the full salary after the migration lost the CAO flag.",
+    "key_doc_ids": [
+      "cao_vandessel_2019",
+      "cfg_vandessel",
+      "tkt_2026_0015_vandessel",
+      "eml_vandessel_budget",
+      "be_agoria_pc200_index_2026"
+    ],
+    "why_plain_rag_fails": "Sector sources (2.21% on 1 January on effective salaries) are far more numerous and keyword-dense than the single company CAO, so plain RAG answers '2.21% on 1 January' and misses the client override.",
+    "wow": "Client override surfaced as a conflict with the sector rule, resolution says the company CAO wins for this client, and the open ticket is linked."
+  },
+  {
+    "id": "G03",
+    "user": "consultant",
+    "question": "Which of our PC 200 clients have open tickets about the January 2026 indexation, and what figure should each get?",
+    "expected_answer": "Two: (1) Softwarehuis Delta, T-2026-0012 (open): should get 2.21% on 1 January 2026; its config still has a manual 2.13% forecast override from 15 Oct 2025 that must be removed, January difference paid retroactively in February. (2) Brouwerij Van Dessel, T-2026-0015 (open): 2.21% but on 1 February 2026 and on base salary excluding the 145 euro brouwerijpremie (company CAO 2019). Not included: Mertens Interieur (T-2026-0019 closed, 2.21% correctly applied); Bouwgroep Maes has an open ticket but it concerns its PC 124 construction workers (0.21859%); De Gouden Lepel's open ticket is PC 302 (2.189%).",
+    "key_doc_ids": [
+      "tkt_2026_0012_delta",
+      "tkt_2026_0015_vandessel",
+      "tkt_2026_0019_mertens",
+      "tkt_2026_0021_maes",
+      "tkt_2026_0027_goudenlepel",
+      "cfg_delta",
+      "cao_vandessel_2019",
+      "be_agoria_pc200_index_2026"
+    ],
+    "why_plain_rag_fails": "Needs a join across tickets (status + PC), client configs/CAOs and the official figure; top-4 chunks cannot hold all tickets plus the per-client rules, and similar-looking tickets (Maes, Gouden Lepel) are in other PCs.",
+    "wow": "Fan-out lights up several leaves (tickets, client configs, official PC 200) and the answer is a per-client table with provenance."
+  },
+  {
+    "id": "G04",
+    "user": "consultant",
+    "question": "The final index is not published yet at the January payroll cut-off. Can we apply the forecast?",
+    "expected_answer": "No. Policy PAY-IDX-01 v2 (valid from 3 November 2025) replaced v1 (1 March 2024). v1 allowed applying the latest forecast with a February correction and had a 20 December cut-off; v2 forbids forecasts, moves the January cut-off to 27 December, and says: if the final figure is still missing, run January without indexation and apply it retroactively in February. Company CAOs that deviate still take precedence.",
+    "key_doc_ids": [
+      "pol_index_v1",
+      "pol_index_v2",
+      "slk_2025_10_15_preload"
+    ],
+    "why_plain_rag_fails": "v1 and v2 are near-identical text with the same title; plain RAG may retrieve v1 (it matches 'apply the forecast' literally) and answer yes.",
+    "wow": "temporal_supersession conflict: v2 wins because it is newer and explicitly replaces v1; the Oct 2025 Slack preload is explained as a v1-era practice."
+  },
+  {
+    "id": "G05",
+    "user": "consultant",
+    "question": "Bouwgroep Maes has construction workers and office staff. What indexation applied to each in January 2026?",
+    "expected_answer": "The 58 construction workers in PC 124: quarterly indexation of 0.21859% on 1 January 2026 (also on the food and housing allowance); next step 1 April 2026. The 9 office employees in PC 200: 2.21% on 1 January 2026. The Slack claim of 6 Jan 2026 that it was '2.21 across the board' is wrong; ticket T-2026-0021 is open to correct the workers' wages, recovery spread over three months (Sofie Claes).",
+    "key_doc_ids": [
+      "be_pc124_index_q1_2026",
+      "be_agoria_pc200_index_2026",
+      "cfg_maes",
+      "tkt_2026_0021_maes",
+      "slk_2026_01_06_pc124",
+      "eml_maes_recovery"
+    ],
+    "why_plain_rag_fails": "The query mentions one client, so retrieval pulls the Slack thread and ticket that both mention '2.21%'; without scope reasoning the answer applies 2.21% to everyone.",
+    "wow": "scope_difference conflict between PC 124 and PC 200 rules; answer is split by population, routed to two leaves (PC 124 and PC 200)."
+  },
+  {
+    "id": "G06",
+    "user": "consultant",
+    "question": "Who should I ask about PC 200 year-end bonus rules, and did anything change for 2026?",
+    "expected_answer": "Jan Peeters, PC 200 owner since 1 September 2025 (team update of 25 Aug 2025). Koen Janssens, named in the 2024 onboarding page and in a Slack reply of 5 Jan 2026, moved to the Ghent implementation team. Change for 2026: 5 days of temporary unemployment are treated as worked days for the year-end bonus (policy PAY-EOY-05 v2, sector agreement 2025-2026). The bonus is the December gross monthly salary, 6 months seniority, pro rata.",
+    "key_doc_ids": [
+      "onb_ownership_2025_update",
+      "onb_ownership_2024",
+      "slk_2026_01_05_owner",
+      "pol_eoy_v2",
+      "pol_eoy_v1",
+      "be_pc200_eindejaarspremie"
+    ],
+    "why_plain_rag_fails": "Two documents (2024 onboarding and a 2026 Slack message) name Koen Janssens; plain RAG returns the stale owner.",
+    "wow": "Owner field on the answer card comes from the leaf's owner persona and the ownership supersession is flagged."
+  },
+  {
+    "id": "G07",
+    "user": "client:Brouwerij Van Dessel",
+    "question": "What indexation do we get in 2026, and what did Softwarehuis Delta get? Do other clients also index on 1 February?",
+    "expected_answer": "For Brouwerij Van Dessel: 2.21% (PC 200 final figure) applied on 1 February 2026 to the gross base salary, excluding the 145 euro brouwerijpremie, which rises by a fixed 2% on 1 July; January without indexation except the sector-minimum floor. Public sector rule: PC 200 is indexed by 2.21% on 1 January 2026. Information about other clients (Softwarehuis Delta or anyone else) cannot be shared. The answer must NOT reveal Delta's 2.13% override, its ticket T-2026-0012, any other client name linked to settings, or internal Slack/policy content.",
+    "key_doc_ids": [
+      "cao_vandessel_2019",
+      "cfg_vandessel",
+      "tkt_2026_0015_vandessel",
+      "be_agoria_pc200_index_2026"
+    ],
+    "why_plain_rag_fails": "Plain RAG has no access filter: BM25 on 'Softwarehuis Delta' retrieves Delta's ticket and config and leaks another client's payroll data.",
+    "wow": "Access filter runs before the leaf sees context: the Delta leaf content is invisible, the answer says it cannot share other clients' data, and only public + own-client citations appear."
+  },
+  {
+    "id": "G08",
+    "user": "consultant",
+    "question": "Did all our clients move to the 8.91 euro employer share for meal vouchers on 1 January 2026?",
+    "expected_answer": "No. From 1 January 2026 the maximum meal voucher is 10 euro with a maximum employer share of 8.91 euro (was 6.91) and minimum employee share 1.09 euro, but it is a possibility, not automatic: it needs a sector/company CAO or individual written agreements (policy PAY-MV-02 v2, Payroll Pulse #42, Liantis). The Slack claim of 2 Jan 2026 that the engine moved every client to 8.91 is wrong. Brouwerij Van Dessel is still on 8 euro / 6.91 pending a signed CAO (T-2026-0102); Delta 8 euro / 6.91; Mertens 7 euro / 5.91.",
+    "key_doc_ids": [
+      "be_mealvouchers_2026",
+      "pol_mealvoucher_v2",
+      "pol_mealvoucher_v1",
+      "int_mealvoucher_news_2025_12",
+      "slk_2026_01_02_mealvouchers",
+      "tkt_2026_0102_vandessel",
+      "cfg_vandessel",
+      "cfg_delta",
+      "cfg_mertens"
+    ],
+    "why_plain_rag_fails": "The Slack thread is the most literal match ('all clients', '8.91', 'January') and plain RAG repeats it.",
+    "wow": "true_contradiction flagged: Slack vs policy v2 in the same period; trust penalises Slack-only support; policy + official source wins."
+  },
+  {
+    "id": "G09",
+    "user": "consultant",
+    "question": "What is the maximum telework allowance we can pay per month in September 2026?",
+    "expected_answer": "164.21 euro per month from 1 September 2026. Before that: 160.99 euro from 1 March to 31 August 2026 and 157.83 euro from 1 March 2025. The internal policy page PAY-TW-03 v2 still says 160.99 (stale; Slack 1 Sep 2026 says it will be updated). Condition: structural telework of one day per week equivalent, assessed monthly.",
+    "key_doc_ids": [
+      "be_telework_2026",
+      "be_telework_2025",
+      "pol_telework_v2",
+      "pol_telework_v1",
+      "slk_2026_09_01_telework",
+      "tkt_2026_0311_delta"
+    ],
+    "why_plain_rag_fails": "Three amounts over three dates; the internal policy (the 'authoritative' internal page) is stale, so plain RAG answers 160.99.",
+    "wow": "temporal_supersession chain shown as a timeline; policy flagged as stale."
+  },
+  {
+    "id": "G10",
+    "user": "consultant",
+    "question": "Which reference period do we use for the June 2026 PC 200 eco-cheques, and which clients are skipped?",
+    "expected_answer": "Reference period 1 June 2025 - 31 May 2026; 250 euro for full-time over the full period, part-time per sector scale, paid in June. The Slack reply of 28 May 2026 saying 'calendar year 2025' is wrong. Skipped: Brouwerij Van Dessel (company CAO 2023 converts eco-cheques into a bicycle allowance) and Mertens Interieur (cafeteria-plan budget). Softwarehuis Delta is paid via Pluxee.",
+    "key_doc_ids": [
+      "be_pc200_ecocheques",
+      "pol_ecocheque_v2",
+      "slk_2026_05_28_ecocheques",
+      "cao_vandessel_2023_bike",
+      "cfg_mertens",
+      "cfg_delta"
+    ],
+    "why_plain_rag_fails": "Contradicting Slack message plus client conversions spread over separate CAO/config docs.",
+    "wow": "true_contradiction (Slack vs official) plus client overrides in one answer."
+  },
+  {
+    "id": "G11",
+    "user": "consultant",
+    "question": "From when does the 21 euro per hour flexi-wage cap in horeca apply, and what does it mean for De Gouden Lepel?",
+    "expected_answer": "From 1 July 2026 (PC 302, subject to indexation), not from 1 January 2026 as the account manager's email of 15 Dec 2025 said. De Gouden Lepel's weekend sommelier at 22.50 euro/hour is above the cap: ticket T-2026-0201 is open; options are 21 euro/hour as flexi-job or a regular part-time contract. Employer contribution 28%; tax-free ceiling 2026 18,440 euro for non-pensioners. Owner Karim El Amrani.",
+    "key_doc_ids": [
+      "be_flexijobs_2026",
+      "pol_flexi_v1",
+      "eml_goudenlepel_flexi",
+      "tkt_2026_0201_goudenlepel",
+      "slk_2026_06_30_flexi"
+    ],
+    "why_plain_rag_fails": "The email to the client states a wrong start date with the right amount; plain RAG may return 1 January 2026.",
+    "wow": "true_contradiction between an outbound email and the official rule: a compliance risk surfaced automatically."
+  },
+  {
+    "id": "G12",
+    "user": "consultant",
+    "question": "Give Verhaeghe Logistics an overview of 2026 indexation and minimum wages per entity. Should their Dutch expats get 27% under the 30% ruling?",
+    "expected_answer": "Belgium: PC 140.03 drivers 2.18% on 1 Jan 2026; PC 200 office 2.21% on 1 Jan 2026. Luxembourg: index tranche +2.5% on 1 June 2026 (index 968.04 -> 992.24), earlier than the Q3 outlook of March 2026; SSM unqualified 2,771.33 euro/month from 1 June 2026. Netherlands: statutory minimum 14.71 euro/hour from 1 Jan 2026, 14.99 from 1 July 2026; six warehouse staff at 14.75 must be raised (T-2026-0260). 30% ruling: stays 30% in 2026 (salary norm 48,013 euro), drops to 27% only from 1 Jan 2027; two of the three expats keep 30% under the transitional rule.",
+    "key_doc_ids": [
+      "tkt_2026_0230_verhaeghe",
+      "lu_index_june2026",
+      "lu_ssm_2026",
+      "int_lu_outlook_2026_03",
+      "nl_minimumloon_jan2026",
+      "nl_minimumloon_jul2026",
+      "tkt_2026_0260_verhaeghe_nl",
+      "nl_30pct_ruling_2026",
+      "eml_verhaeghe_nl_30pct",
+      "eml_verhaeghe_lu_frontaliers"
+    ],
+    "why_plain_rag_fails": "Spans three countries and two PCs; plain RAG mixes Belgian and Luxembourg figures, and repeats the Q3 forecast or the 27% claim.",
+    "wow": "Fan-out to BE/NL/LU leaves (split on country), forecast_vs_final on the LU index, owners Emma de Vries and Marc Schmit."
+  }
+]

@@ -1,0 +1,179 @@
+[
+  {
+    "id": "P01",
+    "kind": "forecast_vs_final",
+    "summary": "PC 200 Jan 2026: Pro-Pay forecast 2.13% (14 Oct 2025) vs final 2.21% (22 Dec 2025)",
+    "doc_ids": [
+      "be_propay_forecast_pc200",
+      "be_agoria_pc200_index_2026"
+    ],
+    "winner": "be_agoria_pc200_index_2026"
+  },
+  {
+    "id": "P02",
+    "kind": "forecast_vs_final",
+    "summary": "PC 302 Jan 2026: horeca desk estimate ~2.1% vs final 2.189%",
+    "doc_ids": [
+      "int_horeca_outlook_2025_11",
+      "be_pc302_index_2026"
+    ],
+    "winner": "be_pc302_index_2026"
+  },
+  {
+    "id": "P03",
+    "kind": "forecast_vs_final",
+    "summary": "LU index tranche expected Q3 2026 vs applied 1 June 2026",
+    "doc_ids": [
+      "int_lu_outlook_2026_03",
+      "lu_index_june2026"
+    ],
+    "winner": "lu_index_june2026"
+  },
+  {
+    "id": "P04",
+    "kind": "temporal_supersession",
+    "summary": "Indexation policy v1 (forecast allowed, cut-off 20 Dec) vs v2 (no forecasts, cut-off 27 Dec)",
+    "doc_ids": [
+      "pol_index_v1",
+      "pol_index_v2"
+    ],
+    "winner": "pol_index_v2"
+  },
+  {
+    "id": "P05",
+    "kind": "temporal_supersession",
+    "summary": "Meal voucher max employer share 6.91 (v1) vs 8.91 from 1 Jan 2026 (v2)",
+    "doc_ids": [
+      "pol_mealvoucher_v1",
+      "pol_mealvoucher_v2"
+    ],
+    "winner": "pol_mealvoucher_v2"
+  },
+  {
+    "id": "P06",
+    "kind": "temporal_supersession",
+    "summary": "Telework max 157.83 (Mar 2025) -> 160.99 (Mar 2026) -> 164.21 (Sep 2026); policy v2 stale",
+    "doc_ids": [
+      "be_telework_2025",
+      "pol_telework_v2",
+      "be_telework_2026"
+    ],
+    "winner": "be_telework_2026"
+  },
+  {
+    "id": "P07",
+    "kind": "temporal_supersession",
+    "summary": "PC 200 owner Koen Janssens (2024, Slack Jan 2026) vs Jan Peeters from 1 Sep 2025",
+    "doc_ids": [
+      "onb_ownership_2024",
+      "slk_2026_01_05_owner",
+      "onb_ownership_2025_update"
+    ],
+    "winner": "onb_ownership_2025_update"
+  },
+  {
+    "id": "P08",
+    "kind": "temporal_supersession",
+    "summary": "Year-end bonus: temporary unemployment not equated (v1) vs 5 days equated from 2026 (v2)",
+    "doc_ids": [
+      "pol_eoy_v1",
+      "pol_eoy_v2"
+    ],
+    "winner": "pol_eoy_v2"
+  },
+  {
+    "id": "P09",
+    "kind": "scope_difference",
+    "summary": "PC 124 quarterly 0.21859% vs PC 200 2.21%; Slack says '2.21 across the board'",
+    "doc_ids": [
+      "be_pc124_index_q1_2026",
+      "slk_2026_01_06_pc124",
+      "be_agoria_pc200_index_2026"
+    ],
+    "winner": "be_pc124_index_q1_2026 (for PC 124)"
+  },
+  {
+    "id": "P10",
+    "kind": "scope_difference",
+    "summary": "PC 330 +2% vs PC 200 2.21% in January 2026",
+    "doc_ids": [
+      "be_bbtk_indexeringen_jan2026",
+      "tkt_2026_0024_az"
+    ],
+    "winner": "both, different scope"
+  },
+  {
+    "id": "P11",
+    "kind": "scope_difference",
+    "note": "client override",
+    "summary": "Brouwerij Van Dessel company CAO: 1 Feb on base excl. brouwerijpremie vs PC 200 sector 1 Jan on effective salaries",
+    "doc_ids": [
+      "cao_vandessel_2019",
+      "be_agoria_pc200_index_2026",
+      "tkt_2026_0015_vandessel"
+    ],
+    "winner": "cao_vandessel_2019 (for this client)"
+  },
+  {
+    "id": "P12",
+    "kind": "true_contradiction",
+    "summary": "Slack: engine moved all clients to 8.91 meal voucher share vs policy v2: only with signed CAO/agreement",
+    "doc_ids": [
+      "slk_2026_01_02_mealvouchers",
+      "pol_mealvoucher_v2",
+      "be_mealvouchers_2026"
+    ],
+    "winner": "pol_mealvoucher_v2"
+  },
+  {
+    "id": "P13",
+    "kind": "true_contradiction",
+    "summary": "Slack: eco-cheque reference period calendar year vs official 1 June - 31 May",
+    "doc_ids": [
+      "slk_2026_05_28_ecocheques",
+      "be_pc200_ecocheques"
+    ],
+    "winner": "be_pc200_ecocheques"
+  },
+  {
+    "id": "P14",
+    "kind": "true_contradiction",
+    "summary": "Email: horeca flexi cap 21 EUR/h from 1 Jan 2026 vs official from 1 July 2026",
+    "doc_ids": [
+      "eml_goudenlepel_flexi",
+      "be_flexijobs_2026"
+    ],
+    "winner": "be_flexijobs_2026"
+  },
+  {
+    "id": "P15",
+    "kind": "true_contradiction",
+    "summary": "Client HR asks 27% 30%-ruling in 2026 vs official 27% only from 2027",
+    "doc_ids": [
+      "eml_verhaeghe_nl_30pct",
+      "nl_30pct_ruling_2026"
+    ],
+    "winner": "nl_30pct_ruling_2026"
+  },
+  {
+    "id": "P16",
+    "kind": "forecast_vs_final",
+    "note": "client config override",
+    "summary": "Delta config manual override 2.13 vs final 2.21",
+    "doc_ids": [
+      "cfg_delta",
+      "be_agoria_pc200_index_2026"
+    ],
+    "winner": "be_agoria_pc200_index_2026"
+  },
+  {
+    "id": "P17",
+    "kind": "temporal_supersession",
+    "summary": "NL minimum wage 14.71 (1 Jan 2026) vs 14.99 (1 Jul 2026)",
+    "doc_ids": [
+      "nl_minimumloon_jan2026",
+      "nl_minimumloon_jul2026"
+    ],
+    "winner": "nl_minimumloon_jul2026 (from July)"
+  }
+]

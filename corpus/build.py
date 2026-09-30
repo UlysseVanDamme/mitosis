@@ -1,4 +1,4 @@
-"""Regenerate corpus/docs/*.json and corpus/manifest.json from corpus/src/wave*.py.
+"""Regenerate corpus/docs/*.json, manifest.json, golden_questions.json and planted_conflicts.json from corpus/src/wave*.py.
 
 Run: python3 corpus/build.py
 """
@@ -9,6 +9,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "src"))
 
+import golden  # noqa: E402
 import wave1_official, wave2_forecasts, wave3_policies, wave4_tickets_slack, wave5_clients, wave6_crossborder  # noqa: E402
 
 WAVES = [
@@ -38,7 +39,9 @@ def main():
             ids.append(d["doc_id"])
         manifest["waves"].append({"name": name, "doc_ids": ids})
     (HERE / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
-    print(f"wrote {len(seen)} docs in {len(WAVES)} waves")
+    (HERE / "golden_questions.json").write_text(json.dumps(golden.GOLDEN, ensure_ascii=False, indent=2) + "\n")
+    (HERE / "planted_conflicts.json").write_text(json.dumps(golden.PLANTED_CONFLICTS, ensure_ascii=False, indent=2) + "\n")
+    print(f"wrote {len(seen)} docs in {len(WAVES)} waves, {len(golden.GOLDEN)} golden questions")
 
 
 if __name__ == "__main__":
