@@ -26,7 +26,7 @@ export interface MockDoc {
 export interface PlantedConflict {
   a: string; b: string; // doc ids; conflict fires when b is absorbed
   kind: string; summary: string; resolution: string; winner: 'a' | 'b';
-  hero?: boolean; plain?: string; // wave 3: spotlight + one-line verdict
+  hero?: boolean; plain?: string; // spotlight + one-line verdict
 }
 
 function d(p: Partial<MockDoc> & Pick<MockDoc, 'doc_id' | 'title' | 'source' | 'source_type' | 'date' | 'topic'>): MockDoc {

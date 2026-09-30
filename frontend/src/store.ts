@@ -51,7 +51,7 @@ export interface AppState {
   loginFor: string | null; // username the login dialog is open for ('' = pick)
   mode: 'stage' | 'explore';
   impacts: Map<string, Impact>; // by conflict_id
-  // wave 4
+  // notifications, handover, budding
   notifications: AppNotification[]; // the logged-in user's own
   phone: AppNotification | null; // the message currently shown on the phone mockup
   selectedConflict: string | null;

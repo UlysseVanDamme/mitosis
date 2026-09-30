@@ -1,4 +1,4 @@
-"""Wave 2 engine: System 1/2 routing, guard (injection + PII), six-question assessment, trust_check."""
+"""Engine: System 1/2 routing, guard (injection + PII), six-question assessment, trust_check."""
 from pathlib import Path
 
 import numpy as np

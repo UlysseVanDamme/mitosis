@@ -1,4 +1,4 @@
-"""Validate the corpus against the PLAN.md contract.
+"""Validate the corpus against the docs/ARCHITECTURE.md data model.
 
 Run: python3 corpus/validate.py   (exit code 1 on any error)
 """

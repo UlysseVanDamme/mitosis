@@ -1,4 +1,4 @@
-// Explore mode (docs/STAGE_MODE.md, "Explore mode (inspector, not dashboard)"):
+// Explore mode (inspector, not dashboard):
 // one right panel that shows the thing you just clicked; everything else is one click away.
 import { Component, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api';

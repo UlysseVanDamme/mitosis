@@ -6,7 +6,7 @@ Deliberately plain: chunk every doc (~300 tokens), BM25 top-4 chunks, one LLM
 call "answer using these passages". No routing, no conflict handling, no
 access control, no provenance weighting. That is the point.
 
-Integrator notes:
+Notes:
 - Dependency: `rank_bm25` (add to backend/pyproject.toml). If it is missing we
   fall back to a small inline BM25Okapi, so the baseline never crashes the API.
 - `docs`: iterable of Document pydantic models or plain dicts (needs doc_id,

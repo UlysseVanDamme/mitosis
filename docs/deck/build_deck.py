@@ -174,7 +174,7 @@ s = new_slide()
 kicker(s, 2, "Three ways to hold knowledge")
 text(s, 0.7, 0.95, 12, 0.9, "Dead, connected, alive.", size=44, bold=True)
 
-compare = SHOTS / "compare-act4.png"
+compare = SHOTS / "scene-act8.png"
 if compare.exists():
     s.shapes.add_picture(str(compare), Inches(0.7), Inches(2.0), width=Inches(11.93))
 else:
@@ -204,7 +204,7 @@ else:
             for px, py in pts:
                 shape(s, MSO_SHAPE.OVAL, ix + px - 0.1, iy + py - 0.1, 0.2, 0.2, PANEL2, MUTED, 1.5)
         else:  # real swarm crop
-            img = crop(SHOTS / "1920-03-swarm.jpg", (380, 150, 1060, 860), "swarm.jpg")
+            img = crop(SHOTS / "scene-act5.png", (380, 150, 1060, 860), "swarm.jpg")
             s.shapes.add_picture(str(img), Inches(ix + (iw - 2.1) / 2), Inches(iy), height=Inches(2.1))
         text(s, x + 0.3, y + 2.65, w - 0.6, 0.6, name, size=30, bold=True, color=col)
         text(s, x + 0.3, y + 3.2, w - 0.6, 0.4, what, size=14, color=MUTED)

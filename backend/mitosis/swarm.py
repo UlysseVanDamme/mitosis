@@ -40,7 +40,7 @@ _LEGACY = {"consultant": ("consultant", None), "desk": ("admin", None), "jan": (
 
 
 def principal(user) -> dict:
-    """Normalise a user (legacy string, or the auth lane's {username, role, access} dict/object)
+    """Normalise a user (legacy string, or the auth module's {username, role, access} dict/object)
     into {username, role, access: set of groups or None for all internal staff, client}.
     Unknown users fail closed to public."""
     if user is None or user == "":
@@ -533,7 +533,7 @@ class Swarm:
             self._notify_owner(c)
         return c
 
-    # ------------------------------------------------------------------ wave 4: dedupe + notifications
+    # dedupe + notifications
     def _family(self, ids: list[str]) -> tuple[frozenset, set]:
         vals = frozenset(_num(self.claims[i].value) for i in ids if i in self.claims)
         facts = {(norm(self.claims[i].subject), norm(self.claims[i].attribute)) for i in ids if i in self.claims}
@@ -633,7 +633,7 @@ class Swarm:
                           "hero": c.hero, "kind": c.kind})
         return {"client": client, "items": items}
 
-    # ------------------------------------------------------------------ wave 3: enrichment
+    # enrichment
     def _enrich(self, c: Conflict) -> None:
         """agent_ids / cross_agent, side cards with wins, hero flag, one-line plain verdict. No LLM."""
         holders = self._holders()
@@ -693,7 +693,7 @@ class Swarm:
                 a.inbox = n
                 self._emit_agent(a)
 
-    # ------------------------------------------------------------------ wave 3: impact
+    # impact
     def _detect_impact(self, c: Conflict) -> list[dict]:
         """X3: once a conflict has a winner, find operational docs (client configs/CAOs, tickets, emails, chat,
         internal notes) that still rely on the losing value in a compatible scope. Deterministic, no LLM."""

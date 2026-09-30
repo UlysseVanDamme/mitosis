@@ -9,7 +9,7 @@
 | `assemble.sh` | ffmpeg cut, concat, subtitles, voice mux. |
 | `out/` | Output, not committed: `raw/*.webm`, `manifest.json`, `clips/`, `mitosis_demo.mp4`, `voiceover.srt`. |
 
-## Shots (follows docs/PRESENTATION.md)
+## Shots (follows the pitch voice-over)
 
 | Time | Shot | What the recorder does |
 |---|---|---|

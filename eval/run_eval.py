@@ -178,7 +178,7 @@ def conflict_recall(conflicts, planted):
             if len(want & got) >= 2:
                 hit, via, cross = c.get("conflict_id"), "conflict", bool(c.get("cross_agent"))
                 break
-        if not hit:  # wave 3: a doc still relying on the losing value, flagged as impact of a resolved conflict
+        if not hit:  # a doc still relying on the losing value, flagged as impact of a resolved conflict
             for c in conflicts:
                 win = next((x.get("doc_id") for x in c.get("sides", []) if x.get("wins")), None)
                 imp = {i.get("doc_id") for i in c.get("impacts", [])}

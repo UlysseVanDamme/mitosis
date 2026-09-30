@@ -1,4 +1,4 @@
-"""Wave 4: notifications (N1), handover (H1), budding (B1), trust calibration, conflict dedupe."""
+"""notifications (N1), handover (H1), budding (B1), trust calibration, conflict dedupe."""
 import asyncio
 import json
 import time
@@ -9,7 +9,7 @@ from mitosis.api import View, filter_event
 from mitosis.auth import DEMO_USERS
 from mitosis.models import Document
 from mitosis.swarm import trust_breakdown
-from test_wave3 import DELTA, DELTA_MEAL, OFFICIAL, SLACK, ClientSplitLLM, api, doc, events, make_swarm  # noqa: F401
+from test_proactive import DELTA, DELTA_MEAL, OFFICIAL, SLACK, ClientSplitLLM, api, doc, events, make_swarm  # noqa: F401
 
 VD = "Brouwerij Van Dessel"
 VD_CAO = doc("vd-cao", "Brouwerij Van Dessel company CAO: PC 200 indexation for our staff is 2.21% from January.",

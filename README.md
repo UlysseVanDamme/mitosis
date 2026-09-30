@@ -30,7 +30,7 @@ A second planted case uses the same client: how many of 12 days of temporary une
 
 ## Dead, connected, alive
 
-![Act 4 of the demo: the same question against dead, connected and living knowledge](docs/screenshots/compare-act4.png)
+![Act 4 of the demo: the same question against dead, connected and living knowledge](docs/screenshots/scene-act8.png)
 
 - **Dead:** documents in a shared drive. You search, you get files, you work out the rest.
 - **Connected:** RAG or a knowledge graph. The documents are linked and an assistant blends them into one answer, but nobody notices that two of them disagree.
@@ -91,7 +91,7 @@ Mitosis can also sit under agents that already exist. `POST /api/trust-check {qu
 
 Golden set of 18 questions (`corpus/golden_questions.json`), scored in code by `eval/run_eval.py`: exact figures and keywords, planted-conflict recall, injection and access-control leaks.
 
-Real run, 30 Sep 2026 (wave 4 engine): `MITOSIS_PROVIDER=claude-cli` (Sonnet + Haiku via `claude -p`), 102 documents, which grew into 28 agents through 11 splits (one of them a bud: a document that fit no existing child started a new branch). Duplicate conflicts are merged into one per contradiction; 44 distinct conflicts, 6 marked hero.
+Real run, 30 Sep 2026: `MITOSIS_PROVIDER=claude-cli` (Sonnet + Haiku via `claude -p`), 102 documents, which grew into 28 agents through 11 splits (one of them a bud: a document that fit no existing child started a new branch). Duplicate conflicts are merged into one per contradiction; 44 distinct conflicts, 6 marked hero.
 
 | Metric | Mitosis | Plain RAG |
 |---|---|---|
@@ -165,15 +165,16 @@ Python 3.12, FastAPI, pydantic, uv, numpy (local embeddings, no model download),
 - **Evaluation size.** 18 golden questions and 21 planted conflicts on 102 documents is enough to compare approaches, not to claim production accuracy.
 - **Persistence and scale.** State lives in memory with a JSON snapshot; one ingest lock serialises routing. Fine for a demo, not for a real payroll desk.
 - **Identity.** Demo users with passcodes, not SSO.
-- **Duplicate conflicts.** The same disagreement is often reported once per document pair. Merging them per topic is next.
-- **Trust score calibration.** The 0-100 score is computed in code but not yet calibrated against labelled answers.
+- **Duplicate conflicts.** Conflicts are merged per fact (subject, attribute, value pair); some near-duplicates with different wording still show up separately.
+- **Trust score calibration.** The 0-100 score follows explicit rules (official or owned source, open conflicts, verification) and shows its factors; it is not yet calibrated against labelled answers.
 
 ## More
 
+- How it works in detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Sales story and buyer: [docs/SALES.md](docs/SALES.md)
+- Pitch voice-over: [demo/video/voiceover.txt](demo/video/voiceover.txt)
 - Pitch deck: [docs/deck/](docs/deck/)
 - Security and threat model: [SECURITY.md](SECURITY.md)
-- Submission text: [docs/SUBMISSION.md](docs/SUBMISSION.md)
 
 ## Team
 

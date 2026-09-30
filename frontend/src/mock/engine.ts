@@ -1,4 +1,4 @@
-// A small in-browser imitation of the backend swarm. Emits the exact PLAN.md
+// A small in-browser imitation of the backend swarm. Emits the exact docs/ARCHITECTURE.md
 // event schema with stage-like timing so the UI can be built and demoed alone.
 import type { Agent, AppNotification, Claim, Conflict, Doc, Handover, MitosisEvent, Router, RoutingStats, Split, VerifiedFact } from '../types';
 import { CONFLICTS, GOLDEN, OWNERS, orderedCorpus, type MockDoc } from './corpus';
@@ -215,7 +215,7 @@ export class MockEngine {
     this.emit({ type: 'agent_updated', agent: { ...a } });
   }
 
-  /** Wave 3: who still relies on the losing value? */
+  /** who still relies on the losing value? */
   private emitImpact(c: Conflict) {
     const lose = c.sides?.find((x) => !x.wins), win = c.sides?.find((x) => x.wins);
     if (!lose || !win) return;
@@ -230,7 +230,7 @@ export class MockEngine {
     });
   }
 
-  // ---------- wave 4: notifications, handover, budding ----------
+  // notifications, handover, budding ----------
   private notes: AppNotification[] = [];
   private nn = 0;
   private note(n: Omit<AppNotification, 'id' | 'ts' | 'delivered_slack' | 'channel'>) {

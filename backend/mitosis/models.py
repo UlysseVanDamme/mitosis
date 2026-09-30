@@ -1,4 +1,4 @@
-"""Data model shared by engine, API and frontend (see PLAN.md)."""
+"""Data model shared by engine, API and frontend (see docs/ARCHITECTURE.md)."""
 from __future__ import annotations
 
 from typing import Literal, Optional
@@ -99,7 +99,7 @@ class Conflict(BaseModel):
     status: Literal["open", "auto_resolved", "verified"] = "open"
     verified_by: Optional[str] = None
     claims: list[Claim] = Field(default_factory=list)  # denormalised for UI cards
-    # wave 3: cross-agent detection, stage-mode spotlight, plain verdict, side cards, downstream impact
+    # cross-agent detection, stage-mode spotlight, plain verdict, side cards, downstream impact
     cross_agent: bool = False  # the claims came from different agents
     agent_ids: list[str] = Field(default_factory=list)  # agents holding the claims
     hero: bool = False

@@ -1,5 +1,5 @@
 {
-  "_doc": "Single source of truth for the demo video: shot order, planned length (seconds) and voice-over cues (seconds from the start of the shot). record.py holds each shot for exactly `dur`, assemble.sh cuts every clip to `dur` and builds voiceover.srt from the cues. Order and wording follow docs/PRESENTATION.md; numbers are from eval/results.md. Total must stay under 175 s (2:55).",
+  "_doc": "Single source of truth for the demo video: shot order, planned length (seconds) and voice-over cues (seconds from the start of the shot). record.py holds each shot for exactly `dur`, assemble.sh cuts every clip to `dur` and builds voiceover.srt from the cues. Order and wording follow demo/video/voiceover.txt; numbers are from eval/results.md. Total must stay under 175 s (2:55).",
   "shots": [
     {
       "id": "a_compare",

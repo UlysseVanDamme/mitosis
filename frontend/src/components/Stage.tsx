@@ -1,4 +1,4 @@
-// Stage mode (docs/STAGE_MODE.md): the default presentation view.
+// Stage mode: the default presentation view.
 // "The swarm reads, divides, and catches contradictions by itself, before anyone asks."
 // Three colours, three numbers, scope names only, one spotlight at a time.
 import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';

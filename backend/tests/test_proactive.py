@@ -1,4 +1,4 @@
-"""Wave 3: cross-agent conflict check (X1), conflict enrichment, owner inbox (X2), impact detection (X3)."""
+"""cross-agent conflict check (X1), conflict enrichment, owner inbox (X2), impact detection (X3)."""
 import json
 import time
 

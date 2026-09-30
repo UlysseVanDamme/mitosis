@@ -1,4 +1,4 @@
-// Mirrors the PLAN.md data model and event schema.
+// Mirrors the docs/ARCHITECTURE.md data model and event schema.
 
 export type SourceType =
   | 'law' | 'official' | 'news' | 'forecast' | 'policy'
@@ -82,7 +82,7 @@ export interface Agent {
   children: string[];
   created_ts?: number;
   documents?: Doc[];
-  inbox?: number; // open conflicts needing a human here (wave 3)
+  inbox?: number; // open conflicts needing a human here
 }
 
 export interface Split {
@@ -111,7 +111,7 @@ export interface Conflict {
   status: 'open' | 'auto_resolved' | 'verified';
   verified_by: string | null;
   claims?: Claim[]; // optional enrichment
-  // wave 3
+  // proactive surfacing
   cross_agent?: boolean;
   agent_ids?: string[];
   hero?: boolean;

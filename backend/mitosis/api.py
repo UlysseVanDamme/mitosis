@@ -690,7 +690,7 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         res["user"] = user.display_name
         return res
 
-    # ---------------------------------------------------------------- wave 4: notifications + handover
+    # notifications + handover
     @api.get("/notifications")
     async def notifications(user: User = Depends(current_user)):
         return {"notifications": sw().notifier.for_user(user.username)}

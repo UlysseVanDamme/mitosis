@@ -1,4 +1,4 @@
-// "This week" (docs/STORY.md scene 5): the buyer's calm summary. All numbers come from the
+// "This week": the buyer's calm summary. All numbers come from the
 // access-filtered state already in the store (GET /api/state + the event stream).
 import { useEffect } from 'react';
 import { patch, useStore, type AppState } from '../store';
