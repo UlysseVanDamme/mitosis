@@ -137,12 +137,18 @@ async def test_budget_yields_interesting_swarm(tmp_path):
 
 
 def test_api_endpoints(tmp_path, monkeypatch):
+    import mitosis.api as api_mod
     import mitosis.swarm as swm
+    from mitosis.auth import Auth
     monkeypatch.setattr(swm, "CORPUS_DIR", FIX)
+    monkeypatch.setattr(api_mod, "RECORDINGS_DIR", tmp_path)
+    monkeypatch.setattr(api_mod, "STATE_DIR", tmp_path / "state")
     s = make_swarm(tmp_path)
-    app = create_app(s)
+    app = create_app(s, Auth(passcodes={"desk": "pw-desk", "jan": "pw-jan"}))
     with TestClient(app) as client:
         assert client.get("/api/health").json()["llm"] == "fake"
+        tok = client.post("/api/login", json={"username": "desk", "passcode": "pw-desk"}).json()["token"]
+        client.headers["Authorization"] = f"Bearer {tok}"
         assert client.post("/api/ingest", json={}).json()["queued"] == 9
         import time
         for _ in range(200):
@@ -164,13 +170,13 @@ def test_api_endpoints(tmp_path, monkeypatch):
         b = client.post("/api/baseline", json={"question": "PC 200 indexation"})
         assert b.status_code in (200, 503)
         k = st["conflicts"][0]
-        v = client.post("/api/verify", json={"conflict_id": k["conflict_id"], "winning_claim_id": k["claim_ids"][0], "by": "me"})
-        assert v.status_code == 200
-        assert client.post("/api/verify", json={"conflict_id": "nope", "winning_claim_id": "x", "by": "me"}).status_code == 404
+        v = client.post("/api/verify", json={"conflict_id": k["conflict_id"], "winning_claim_id": k["claim_ids"][0]})
+        assert v.status_code == 200 and v.json()["fact"]["verified_by"] == "Knowledge desk"
+        assert client.post("/api/verify", json={"conflict_id": "K999", "winning_claim_id": "C1"}).status_code == 404
         assert client.post("/api/reset").json()["ok"]
         assert client.get("/api/state").json()["stats"]["docs"] == 0
-        # replay the previous run (rotated to events.prev.jsonl)
-        rp = client.post("/api/replay", json={"file": str(tmp_path / "events.prev.jsonl"), "speed": 1000})
+        # replay the previous run (rotated to events.prev.jsonl, which lives in the recordings dir here)
+        rp = client.post("/api/replay", json={"file": "events.prev.jsonl", "speed": 100})
         assert rp.status_code == 200 and rp.json()["events"] > 10
 
 
