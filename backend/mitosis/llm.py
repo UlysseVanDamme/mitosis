@@ -515,6 +515,70 @@ class RealLLM(FakeLLM):
         return text or await super().aggregate(question, leaf_answers, conflicts)
 
 
+CACHE_DIR = Path(__file__).resolve().parents[1] / "state" / "llm_cache"
+CLI_TIMEOUT = float(os.environ.get("MITOSIS_CLI_TIMEOUT", "60"))
+
+
+class ClaudeCLILLM(RealLLM):
+    """Same prompts as RealLLM, but each call runs the local `claude -p` CLI (Claude Code
+    subscription auth), so no API key is needed. Prompts go over stdin; structured output
+    comes back via --json-schema."""
+
+    CLI_MODELS = {SONNET: os.environ.get("MITOSIS_CLI_SONNET", "sonnet"),
+                  HAIKU: os.environ.get("MITOSIS_CLI_HAIKU", "haiku")}
+
+    def __init__(self) -> None:
+        self.sem = asyncio.Semaphore(int(os.environ.get("MITOSIS_CLI_CONCURRENCY", "8")))
+        self.bin = os.environ.get("MITOSIS_CLAUDE_BIN", "claude")
+
+    async def _run(self, model: str, system: str, user: str, schema: Optional[dict]) -> dict:
+        args = [self.bin, "-p", "--model", self.CLI_MODELS.get(model, "sonnet"), "--output-format", "json",
+                "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config", "--tools", "",
+                "--system-prompt", system or "You are a helpful assistant."]
+        if schema is not None:
+            args += ["--json-schema", json.dumps(schema)]
+        key = hashlib.sha256(json.dumps([args[4], system, user, schema], sort_keys=True).encode()).hexdigest()
+        cached = CACHE_DIR / f"{key}.json"
+        if cached.exists():
+            return json.loads(cached.read_text())
+        async with self.sem:
+            proc = await asyncio.create_subprocess_exec(
+                *args, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE, cwd="/tmp")
+            try:
+                out, err = await asyncio.wait_for(proc.communicate(user.encode()), timeout=CLI_TIMEOUT)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                proc.kill()
+                await proc.wait()
+                raise
+        data = json.loads(out.decode() or "{}")
+        if data.get("is_error"):
+            raise RuntimeError(f"claude cli: {str(data.get('result'))[:200]} {err.decode()[:200]}")
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cached.write_text(json.dumps({k: data.get(k) for k in ("result", "structured_output")}))
+        return data
+
+    async def _json(self, model: str, system: str, user: str, schema: dict, max_tokens: int = 4000) -> dict:
+        last: Exception | None = None
+        for attempt in range(2):
+            try:
+                data = await self._run(model, system, user, schema)
+                so = data.get("structured_output")
+                return so if isinstance(so, dict) else json.loads(data.get("result") or "{}")
+            except Exception as ex:  # noqa: BLE001
+                last = ex
+                log.warning("claude cli %s attempt %d failed: %s", model, attempt + 1, ex)
+                await asyncio.sleep(1.0)
+        raise RuntimeError(f"claude cli failed: {last}")
+
+    async def complete(self, system: str = "", user: str = "", model: str = SONNET, max_tokens: int = 4000) -> str:
+        try:
+            return (await self._run(model, system, user, None)).get("result") or ""
+        except Exception as ex:  # noqa: BLE001
+            log.warning("claude cli complete failed: %s", ex)
+            return await FakeLLM.complete(self, system, user, model, max_tokens)
+
+
 def _load_env() -> None:
     try:
         from dotenv import load_dotenv
@@ -528,7 +592,12 @@ def _load_env() -> None:
 
 def make_llm() -> FakeLLM:
     _load_env()
+    provider = os.environ.get("MITOSIS_PROVIDER", "").lower()
     key = os.environ.get("ANTHROPIC_API_KEY")
-    if os.environ.get("MITOSIS_FAKE_LLM") == "1" or not key:
+    if os.environ.get("MITOSIS_FAKE_LLM") == "1" or provider == "fake":
         return FakeLLM()
-    return RealLLM(api_key=key)
+    if provider == "claude-cli":
+        return ClaudeCLILLM()
+    if key:
+        return RealLLM(api_key=key)
+    return FakeLLM()
