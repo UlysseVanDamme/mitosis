@@ -1,0 +1,12 @@
+{
+ "doc_id": "slack-eco",
+ "title": "#payroll-be: eco-cheque question",
+ "source": "#payroll-be Slack",
+ "source_type": "slack",
+ "date": "2025-03-01",
+ "country": "BE",
+ "pc": "PC 200",
+ "topic": "eco-cheques",
+ "access_group": "internal",
+ "text": "Quick one: eco-cheque max for PC 200 is \u20ac275 now right? That is what I told the client."
+}

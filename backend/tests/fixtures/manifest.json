@@ -1,0 +1,23 @@
+{
+ "waves": [
+  {
+   "name": "public",
+   "doc_ids": [
+    "pc200-forecast",
+    "pc124-index",
+    "nl-holiday",
+    "pc200-agoria"
+   ]
+  },
+  {
+   "name": "internal",
+   "doc_ids": [
+    "policy-v1",
+    "vandessel-cao",
+    "vandessel-ticket",
+    "policy-v2",
+    "slack-eco"
+   ]
+  }
+ ]
+}
