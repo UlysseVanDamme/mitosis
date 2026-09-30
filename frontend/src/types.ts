@@ -2,7 +2,7 @@
 
 export type SourceType =
   | 'law' | 'official' | 'news' | 'forecast' | 'policy'
-  | 'ticket' | 'slack' | 'cao' | 'email' | 'faq';
+  | 'ticket' | 'slack' | 'cao' | 'email' | 'faq' | 'teams';
 
 export interface Doc {
   doc_id: string;
@@ -18,7 +18,25 @@ export interface Doc {
   topic?: string;
   access_group?: string;
   text?: string;
+  owner?: string | null; // accountable person; null = ownerless
+  language?: 'nl' | 'fr' | 'en' | null;
+  quarantined?: boolean;
+  quarantine_reason?: string | null;
 }
+
+export type Role = 'admin' | 'expert' | 'consultant' | 'client' | 'public';
+export interface User { username: string; display_name: string; role: Role; access?: string[] | string }
+
+export interface Check { verdict: string; evidence: string }
+export interface Expert { name: string; role: string; agent_id: string }
+export interface Assessment {
+  reliable: Check; current: Check; applies: Check; gaps: Check;
+  experts: Expert[];
+  trust: { score: number; verdict: 'trust' | 'verify first' | 'do not rely' | string; reason: string };
+}
+
+export type Router = 'rule' | 's1' | 's2';
+export interface RoutingStats { rule: number; s1: number; s2: number; s1_ms_avg: number; s2_ms_avg: number }
 
 export interface Claim {
   claim_id: string;
@@ -49,6 +67,7 @@ export interface Agent {
   children: string[];
   created_ts?: number;
   documents?: Doc[];
+  inbox?: number; // open conflicts needing a human here (wave 3)
 }
 
 export interface Split {
@@ -76,6 +95,20 @@ export interface Conflict {
   status: 'open' | 'auto_resolved' | 'verified';
   verified_by: string | null;
   claims?: Claim[]; // optional enrichment
+  // wave 3
+  cross_agent?: boolean;
+  agent_ids?: string[];
+  hero?: boolean;
+  plain_summary?: string;
+  sides?: Side[];
+}
+
+export interface Side { value: string; source: string; source_type: string; date?: string | null; doc_id: string; wins: boolean }
+
+export interface Impact {
+  conflict_id: string; agent_id: string; losing_value: string; winning_value: string;
+  affected: { doc_id: string; title: string; client?: string | null; source_type?: string; why: string }[];
+  summary: string;
 }
 
 export interface VerifiedFact {
@@ -107,20 +140,24 @@ export interface ServerState {
 
 export type MitosisEvent =
   | { type: 'reset'; ts: number }
-  | { type: 'snapshot'; ts: number; state: ServerState }
+  | { type: 'snapshot'; ts: number; state: ServerState; keepLayout?: boolean }
   | { type: 'doc_queued'; ts: number; doc_id: string; title: string; source: string; source_type: string }
-  | { type: 'doc_routed'; ts: number; doc_id: string; path: string[]; leaves: string[] }
+  | { type: 'doc_routed'; ts: number; doc_id: string; path: string[]; leaves: string[]; router?: Router; margin?: number | null; ms?: number }
+  | { type: 'routing_stats'; ts: number } & RoutingStats
+  | { type: 'doc_quarantined'; ts: number; doc_id: string; title: string; reason: string }
+  | { type: 'doc_redacted'; ts: number; doc_id: string; count: number; kinds: string[] }
   | { type: 'doc_absorbed'; ts: number; doc_id: string; agent_id: string; tokens: number; budget: number; claims: number }
   | { type: 'conflict_detected'; ts: number; conflict: Conflict; agent_id: string }
   | { type: 'split_started'; ts: number; agent_id: string; tokens: number; budget: number }
   | { type: 'agent_split'; ts: number; split: Split; parent: Agent; children: Agent[] }
   | { type: 'agent_updated'; ts: number; agent: Agent }
   | { type: 'query_started'; ts: number; query_id: string; question: string; user: string }
-  | { type: 'query_routed'; ts: number; query_id: string; path: string[]; leaves: string[]; confidences: Record<string, number> }
+  | { type: 'query_routed'; ts: number; query_id: string; path: string[]; leaves: string[]; confidences: Record<string, number>; router?: Router; margin?: number | null; ms?: number }
   | { type: 'leaf_answer'; ts: number; query_id: string; agent_id: string; answer: string; citations: string[] }
-  | { type: 'query_answer'; ts: number; query_id: string; answer: string; citations: Citation[]; conflicts: Conflict[]; trust: number; owners: string[]; leaves: string[] }
+  | { type: 'query_answer'; ts: number; query_id: string; answer: string; citations: Citation[]; conflicts: Conflict[]; trust: number; owners: string[]; leaves: string[]; assessment?: Assessment }
   | { type: 'baseline_answer'; ts: number; query_id: string; answer: string; retrieved: string[] }
   | { type: 'conflict_verified'; ts: number; conflict: Conflict; fact: VerifiedFact }
+  | ({ type: 'impact_detected'; ts: number } & Impact)
   | { type: 'ingest_done'; ts: number; docs: number; agents: number; splits: number; conflicts: number };
 
 export interface GoldenQuestion {

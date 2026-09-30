@@ -1,7 +1,16 @@
 // A small in-browser imitation of the backend swarm. Emits the exact PLAN.md
 // event schema with stage-like timing so the UI can be built and demoed alone.
-import type { Agent, Claim, Conflict, MitosisEvent, Split, VerifiedFact } from '../types';
+import type { Agent, Claim, Conflict, Doc, MitosisEvent, Router, RoutingStats, Split, VerifiedFact } from '../types';
 import { CONFLICTS, GOLDEN, OWNERS, orderedCorpus, type MockDoc } from './corpus';
+import { deriveAssessment } from '../assess';
+
+const META_DIMS = new Set(['pc', 'country', 'client']);
+function visible(d: { access_group?: string }, access: string) {
+  const g = d.access_group ?? 'public';
+  if (access === 'consultant') return true;
+  if (g === 'public') return true;
+  return access.startsWith('client:') && g === access;
+}
 
 type Emit = (e: MitosisEvent) => void;
 type Route = { dimension: string; map: Record<string, string>; other: string | null };
@@ -28,6 +37,8 @@ export class MockEngine {
   private nextAgent = 1;
   private owners = [...OWNERS];
   private qn = 0;
+  private routing: RoutingStats = { rule: 0, s1: 0, s2: 0, s1_ms_avg: 0, s2_ms_avg: 0 };
+  private routed = 0;
 
   constructor(emit: Emit) {
     this.emitFn = emit;
@@ -37,13 +48,20 @@ export class MockEngine {
   }
 
   private emit(e: Record<string, unknown>) { this.emitFn({ ts: Date.now() / 1000, ...e } as MitosisEvent); }
-  private sleep(ms: number, g: number) {
-    return new Promise<boolean>((r) => setTimeout(() => r(g === this.gen), ms / this.speed));
+  private paused = false;
+  private wake: (() => void) | null = null;
+  pause() { this.paused = true; }
+  resume() { this.paused = false; this.wake?.(); this.wake = null; }
+  private async sleep(ms: number, g: number) {
+    await new Promise<void>((r) => setTimeout(r, ms / this.speed));
+    while (this.paused && g === this.gen) await new Promise<void>((r) => { this.wake = r; });
+    return g === this.gen;
   }
 
   private resetState() {
     this.agents.clear(); this.routes.clear(); this.conflicts.clear(); this.docs.clear();
     this.facts = []; this.splits = []; this.nextAgent = 1; this.owners = [...OWNERS];
+    this.routing = { rule: 0, s1: 0, s2: 0, s1_ms_avg: 0, s2_ms_avg: 0 }; this.routed = 0;
     this.agents.set('A0', {
       agent_id: 'A0', parent_id: null, depth: 0, status: 'active',
       scope: { dimension: 'root', value: 'all', description: 'Everything' },
@@ -57,12 +75,36 @@ export class MockEngine {
 
   state() {
     const docs: Record<string, unknown> = {};
-    for (const [id, d] of this.docs) { const { text: _t, claims: _c, tokens: _k, ...rest } = d; docs[id] = rest; }
-    return { agents: [...this.agents.values()], splits: this.splits, conflicts: [...this.conflicts.values()], facts: this.facts, docs, budget: this.budget } as never;
+    for (const [id, d] of this.docs) docs[id] = this.pub(d);
+    return { agents: [...this.agents.values()], splits: this.splits, conflicts: [...this.conflicts.values()], facts: this.facts, docs, budget: this.budget, stats: { routing: this.routing } } as never;
+  }
+
+  private pub(d: MockDoc): Doc {
+    const { text: _t, claims: _c, tokens: _k, injection, pii: _p, ...rest } = d;
+    return { ...rest, owner: d.owner === null ? null : d.owner ?? d.author, quarantined: !!injection, quarantine_reason: injection ?? null };
+  }
+
+  /** Layered router: metadata rule, else System 1 (centroid margin), else System 2 (LLM). S2 teaches S1 over time. */
+  private pickRouter(path: string[]): { router: Router; margin: number | null; ms: number } {
+    this.routed++;
+    const dim = this.routes.get(path[path.length - 2])?.dimension ?? 'topic';
+    const r = Math.random();
+    const s2Share = Math.max(0.08, 0.5 - this.routed * 0.012);
+    if (META_DIMS.has(dim) && r < 0.18) return { router: 'rule', margin: null, ms: 0.2 + Math.random() * 0.3 };
+    if (r < 1 - s2Share) return { router: 's1', margin: 0.06 + Math.random() * 0.2, ms: 1.5 + Math.random() * 3.5 };
+    return { router: 's2', margin: Math.random() * 0.04, ms: 900 + Math.random() * 700 };
+  }
+
+  private bump(router: Router, ms: number) {
+    const o = this.routing;
+    if (router === 'rule') o.rule++;
+    else if (router === 's1') { o.s1_ms_avg = (o.s1_ms_avg * o.s1 + ms) / (o.s1 + 1); o.s1++; }
+    else { o.s2_ms_avg = (o.s2_ms_avg * o.s2 + ms) / (o.s2 + 1); o.s2++; }
   }
 
   reset() {
     this.gen++;
+    this.resume();
     this.resetState();
     this.emit({ type: 'reset' });
   }
@@ -101,10 +143,20 @@ export class MockEngine {
     this.docs.set(doc.doc_id, doc);
     this.emit({ type: 'doc_queued', doc_id: doc.doc_id, title: doc.title, source: doc.source, source_type: doc.source_type });
     if (!(await this.sleep(160, g))) return false;
+    if (doc.injection) {
+      this.emit({ type: 'doc_quarantined', doc_id: doc.doc_id, title: doc.title, reason: doc.injection });
+      return this.sleep(900, g);
+    }
+    if (doc.pii?.length) this.emit({ type: 'doc_redacted', doc_id: doc.doc_id, count: doc.pii.length + (doc.doc_id.length % 2), kinds: doc.pii });
     const path = this.route(doc);
     const leaf = path[path.length - 1];
-    this.emit({ type: 'doc_routed', doc_id: doc.doc_id, path, leaves: [leaf] });
-    if (!(await this.sleep(260 + path.length * 190, g))) return false;
+    // Before the first division there is no routing decision to make.
+    const rt = path.length > 1 ? this.pickRouter(path) : null;
+    if (rt?.router === 's2' && !(await this.sleep(320, g))) return false; // System 2 thinks
+    if (rt) this.bump(rt.router, rt.ms);
+    this.emit({ type: 'doc_routed', doc_id: doc.doc_id, path, leaves: [leaf], ...(rt ? { router: rt.router, margin: rt.margin, ms: Math.round(rt.ms * 10) / 10 } : {}) });
+    if (rt) this.emit({ type: 'routing_stats', ...this.routing });
+    if (!(await this.sleep(260 + path.length * (rt?.router === 's2' ? 260 : 150), g))) return false;
     const a = this.agents.get(leaf)!;
     const claims: Claim[] = doc.claims.map((c, i) => ({ claim_id: `${doc.doc_id}#c${i}`, doc_id: doc.doc_id, ...c }));
     a.doc_ids.push(doc.doc_id);
@@ -116,19 +168,63 @@ export class MockEngine {
       if (pc.b !== doc.doc_id || !this.docs.has(pc.a)) continue;
       if (!(await this.sleep(380, g))) return false;
       const ca = `${pc.a}#c0`, cb = `${pc.b}#c0`;
+      const holder = this.leafOf(pc.a) ?? leaf;
+      const agent_ids = [...new Set([holder, leaf])];
+      const side = (id: string, wins: boolean) => {
+        const d = this.docs.get(id)!;
+        return { value: d.claims[0]?.value ?? '', source: d.source, source_type: d.source_type, date: d.date, doc_id: id, wins };
+      };
       const conflict: Conflict = {
         conflict_id: `C${this.conflicts.size + 1}`, agent_id: leaf, claim_ids: [ca, cb], kind: pc.kind,
-        summary: pc.summary, resolution: pc.resolution, status: pc.kind === 'temporal_supersession' || pc.kind === 'forecast_vs_final' ? 'auto_resolved' : 'open', verified_by: null,
+        summary: pc.summary, resolution: pc.resolution, status: pc.kind === 'temporal_supersession' || pc.kind === 'forecast_vs_final' || pc.kind === 'scope_difference' ? 'auto_resolved' : 'open', verified_by: null,
         claims: [this.claim(ca), this.claim(cb)].filter(Boolean) as Claim[],
+        cross_agent: agent_ids.length > 1, agent_ids, hero: !!pc.hero,
+        plain_summary: pc.plain ?? (pc.kind === 'scope_difference' ? 'Both valid, in different scopes' : pc.kind === 'temporal_supersession' ? 'The newer version replaces the old one' : 'Two sources disagree'),
+        sides: [side(pc.a, pc.winner === 'a'), side(pc.b, pc.winner === 'b')],
       };
       this.conflicts.set(conflict.conflict_id, conflict);
       this.emit({ type: 'conflict_detected', conflict, agent_id: leaf });
+      this.emitInbox(leaf);
+      if (pc.kind === 'forecast_vs_final') this.emitImpact(conflict);
     }
 
     if (a.tokens > this.budget) {
       if (!(await this.split(leaf, g))) return false;
     }
     return this.sleep(240, g);
+  }
+
+  private leafOf(docId: string) {
+    for (const a of this.agents.values()) if (a.status === 'active' && a.doc_ids.includes(docId)) return a.agent_id;
+    return null;
+  }
+
+  private inbox(id: string) {
+    let n = 0;
+    for (const c of this.conflicts.values()) if (c.status === 'open' && c.agent_id === id) n++;
+    return n;
+  }
+
+  private emitInbox(id: string) {
+    const a = this.agents.get(id);
+    if (!a) return;
+    a.inbox = this.inbox(id);
+    this.emit({ type: 'agent_updated', agent: { ...a } });
+  }
+
+  /** Wave 3: who still relies on the losing value? */
+  private emitImpact(c: Conflict) {
+    const lose = c.sides?.find((x) => !x.wins), win = c.sides?.find((x) => x.wins);
+    if (!lose || !win) return;
+    const affected = [...this.docs.values()]
+      .filter((d) => d.doc_id !== lose.doc_id && (d.source_type === 'config' || d.source_type === 'ticket') && d.claims.some((cl) => cl.value.replace(',', '.').includes(lose.value.replace(',', '.').replace('%', '').trim())))
+      .map((d) => ({ doc_id: d.doc_id, title: d.title, client: d.client, source_type: d.source_type, why: `still uses ${lose.value}` }));
+    const cfg = affected.find((x) => x.source_type === 'config');
+    if (!cfg) return;
+    this.emit({
+      type: 'impact_detected', conflict_id: c.conflict_id, agent_id: c.agent_id, losing_value: lose.value, winning_value: win.value, affected,
+      summary: `${cfg.client} payroll config still uses ${lose.value}: fix before the payroll run`,
+    });
   }
 
   private claim(id: string): Claim | undefined {
@@ -172,7 +268,7 @@ export class MockEngine {
     const route: Route = { dimension: dim, map: {}, other: null };
     const mk = (value: string, label: string, ds: MockDoc[]) => {
       const cid = `A${this.nextAgent++}`;
-      const owner = this.owners.shift() ?? `Owner ${cid}`;
+      const owner = value === 'PC 200' || a.owner === 'Jan Peeters' ? 'Jan Peeters' : this.owners.shift() ?? `Owner ${cid}`;
       const idSet = new Set(ds.map((d) => d.doc_id));
       const child: Agent = {
         agent_id: cid, parent_id: id, depth: a.depth + 1, status: 'active',
@@ -210,19 +306,25 @@ export class MockEngine {
       const owner = children.find((ch) => ch.claims.some((cl) => cl.claim_id === c.claim_ids[c.claim_ids.length - 1]));
       if (owner) c.agent_id = owner.agent_id;
     }
+    a.inbox = 0;
+    for (const ch of children) ch.inbox = this.inbox(ch.agent_id);
     this.emit({ type: 'agent_split', split, parent: { ...a }, children });
     if (!(await this.sleep(1300, g))) return false;
     for (const ch of children) if (ch.tokens > this.budget) if (!(await this.split(ch.agent_id, g))) return false;
     return true;
   }
 
-  agent(id: string) {
+  agent(id: string, access = 'consultant') {
     const a = this.agents.get(id);
     if (!a) return null;
-    return { ...a, documents: a.doc_ids.map((d) => { const { claims: _c, tokens: _t, ...rest } = this.docs.get(d)!; return rest; }) };
+    const docs = a.doc_ids.map((d) => this.docs.get(d)!).filter((d) => visible(d, access));
+    return { ...a, doc_ids: docs.map((d) => d.doc_id), documents: docs.map((d) => ({ ...this.pub(d), text: d.text })) };
   }
 
-  golden() { return GOLDEN.map(({ question, user, wow }) => ({ question, user, wow })); }
+  golden(access = 'consultant') {
+    const list = GOLDEN.filter((q) => access.startsWith('client:') ? q.user === access : !q.user.startsWith('client:'));
+    return list.map(({ question, user, wow }) => ({ question, user, wow }));
+  }
 
   async query(question: string, user: string) {
     const g = this.gen;
@@ -249,7 +351,7 @@ export class MockEngine {
     for (const l of leaves) { let a = this.agents.get(l); while (a) { path.add(a.agent_id); a = a.parent_id ? this.agents.get(a.parent_id) : undefined; } }
     const confidences: Record<string, number> = {};
     [...leaves].forEach((l, i) => (confidences[l] = Math.max(0.55, 0.94 - i * 0.12)));
-    this.emit({ type: 'query_routed', query_id, path: [...path], leaves: [...leaves], confidences });
+    this.emit({ type: 'query_routed', query_id, path: [...path], leaves: [...leaves], confidences, router: 's1', margin: 0.08, ms: 2.4 });
 
     // baseline races ahead: it is fast and confident
     await this.sleep(700, g);
@@ -261,19 +363,29 @@ export class MockEngine {
       this.emit({ type: 'leaf_answer', query_id, agent_id: l, answer: `From ${a.scope.description}: relevant facts found.`, citations: gq.keyDocs.filter((d) => a.doc_ids.includes(d)) });
     }
     await this.sleep(900, g);
-    const blocked = user === 'public' && gq.keyDocs.every((d) => (this.docs.get(d)?.access_group ?? 'public') !== 'public');
-    const conflicts = [...this.conflicts.values()].filter((c) => c.claim_ids.some((cid) => gq.keyDocs.includes(cid.split('#c')[0])));
+    const seen = gq.keyDocs.map((d) => this.docs.get(d)).filter((d): d is MockDoc => !!d && visible(d, user));
+    const blocked = !seen.length && gq.keyDocs.some((d) => this.docs.has(d));
+    const seenIds = new Set(seen.map((d) => d.doc_id));
+    const conflicts = [...this.conflicts.values()].filter((c) => c.claim_ids.every((cid) => seenIds.has(cid.split('#c')[0])));
     const verified = conflicts.filter((c) => c.status === 'verified').length;
     const open = conflicts.filter((c) => c.status === 'open').length;
-    const official = gq.keyDocs.filter((d) => ['official', 'law'].includes(this.docs.get(d)?.source_type ?? '')).length;
-    const trust = blocked ? 0 : Math.max(8, Math.min(97, 58 + official * 12 + verified * 18 - open * 16 + (conflicts.length && !open ? 6 : 0)));
-    const citations = blocked ? [] : gq.keyDocs.filter((d) => this.docs.has(d)).map((d) => {
-      const doc = this.docs.get(d)!;
-      return { doc_id: d, title: doc.title, source: doc.source, date: doc.date, url: doc.url ?? null };
+    const official = seen.filter((d) => ['official', 'law', 'cao'].includes(d.source_type)).length;
+    const ownerless = seen.filter((d) => d.owner === null).length;
+    const trust = blocked ? 0 : Math.max(8, Math.min(97, 52 + Math.min(3, official) * 11 + verified * 20 - open * 17 - ownerless * 6 + (conflicts.length && !open ? 6 : 0)));
+    const citations = blocked ? [] : seen.map((doc) => ({ doc_id: doc.doc_id, title: doc.title, source: doc.source, date: doc.date, url: doc.url ?? null }));
+    const experts: { name: string; role: string; agent_id: string }[] = [];
+    for (const l of leaves) {
+      const a = this.agents.get(l)!;
+      if (experts.some((x) => x.name === a.owner)) continue;
+      experts.push({ name: a.owner, role: a.owner === 'Jan Peeters' ? 'PC 200 expert' : `owner of ${a.scope.description}`, agent_id: l });
+    }
+    const assessment = deriveAssessment({
+      docs: seen.map((d) => this.pub(d)), conflicts, trust, experts, blocked,
+      claimDoc: (id) => id.split('#c')[0],
     });
     this.emit({
-      type: 'query_answer', query_id, answer: gq.answer, citations, conflicts: blocked ? [] : conflicts, trust,
-      owners: [...leaves].map((l) => this.agents.get(l)!.owner), leaves: [...leaves],
+      type: 'query_answer', query_id, answer: blocked ? GOLDEN.find((x) => x.wow === 'Access control')!.answer : gq.answer, citations, conflicts, trust,
+      owners: experts.map((x) => x.name), leaves: [...leaves], assessment,
     });
   }
 
@@ -290,6 +402,7 @@ export class MockEngine {
     };
     this.facts.push(fact);
     this.emit({ type: 'conflict_verified', conflict: { ...c }, fact });
+    this.emitInbox(c.agent_id);
   }
 }
 

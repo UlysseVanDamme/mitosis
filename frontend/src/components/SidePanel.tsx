@@ -10,9 +10,11 @@ export function ConflictCard({ c, compact }: { c: Conflict; compact?: boolean })
   const win = winnerOf(c, claims, s);
   const owner = s.agents.get(c.agent_id)?.owner ?? 'owner';
   const [pending, setPending] = useState<string | null>(null);
+  const me = s.auth;
+  const canVerify = me?.role === 'expert' || me?.role === 'admin';
   const verify = async (claimId: string) => {
     setPending(claimId);
-    try { await api.verify(c.conflict_id, claimId, owner); } finally { setPending(null); }
+    try { await api.verify(c.conflict_id, claimId, me?.display_name ?? owner); } finally { setPending(null); }
   };
   return (
     <div className={`conflict ${c.status}`}>
@@ -37,7 +39,7 @@ export function ConflictCard({ c, compact }: { c: Conflict; compact?: boolean })
                   {d?.date && <span className="mono dim">{d.date}</span>}
                 </div>
                 {isWin && <span className="tag win-tag">wins</span>}
-                {c.status !== 'verified' && (
+                {c.status !== 'verified' && canVerify && (
                   <button className="btn tiny" disabled={!!pending} onClick={() => verify(cl.claim_id)}>
                     {pending === cl.claim_id ? '…' : 'Verify this'}
                   </button>
@@ -48,7 +50,9 @@ export function ConflictCard({ c, compact }: { c: Conflict; compact?: boolean })
         </div>
       )}
       <p className="resolution">{c.resolution}</p>
-      {c.status !== 'verified' && <p className="owner-line">Ask <b>{owner}</b>, owner of {c.agent_id}</p>}
+      {c.status !== 'verified' && (canVerify
+        ? <p className="owner-line">Owner of {c.agent_id}: <b>{owner}</b>. You can verify.</p>
+        : <p className="owner-line">Only <b>Jan Peeters</b> (owner) can verify</p>)}
     </div>
   );
 }
@@ -140,12 +144,16 @@ export function Toasts() {
 }
 
 export function Legend() {
+  const lens = useStore((x) => x.lens);
   const dims = ['country', 'pc', 'client', 'topic', 'period'];
-  const srcs = ['official', 'news', 'forecast', 'policy', 'ticket', 'slack', 'cao'];
+  const debt: [string, number, number][] = [['no debt', 155, 0.1], ['1 open or ownerless', 80, 0.13], ['rotting', 28, 0.17]];
+  const routers: [string, string][] = [['System 1', 'oklch(0.88 0.13 205)'], ['System 2', 'oklch(0.84 0.15 68)'], ['rule', 'oklch(0.94 0.02 250)']];
   return (
     <div className="legend">
-      <div><span className="lg-h">Cell colour</span>{dims.map((d) => <span key={d}><i style={{ background: dimColor(d, 0.72) }} />{dimLabel(d)}</span>)}</div>
-      <div><span className="lg-h">Particles</span>{srcs.map((d) => <span key={d}><i className="dot" style={{ background: srcColor(d, 0.82) }} />{d}</span>)}</div>
+      {lens === 'debt'
+        ? <div><span className="lg-h">Debt</span>{debt.map(([l, h, c]) => <span key={l}><i style={{ background: `oklch(0.72 ${c} ${h})` }} />{l}</span>)}</div>
+        : <div><span className="lg-h">Cell colour</span>{dims.map((d) => <span key={d}><i style={{ background: dimColor(d, 0.72) }} />{dimLabel(d)}</span>)}</div>}
+      <div><span className="lg-h">Particles</span>{routers.map(([l, c]) => <span key={l}><i className="dot" style={{ background: c }} />{l}</span>)}<span><i className="dot lockdot" />quarantined</span></div>
       <div><span className="lg-h">Ring</span><span>context used / budget</span></div>
     </div>
   );

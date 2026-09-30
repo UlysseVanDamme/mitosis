@@ -3,21 +3,23 @@ import { api } from '../api';
 import { patch, useStore } from '../store';
 import type { GoldenQuestion } from '../types';
 import { ConflictCard } from './SidePanel';
-import { USERS, renderBold, srcColor } from './util';
+import { renderBold, srcColor } from './util';
+import { BlankLedger, Ledger, assessmentFor, toneOf } from './Trust';
 
 export function QueryDock() {
   const user = useStore((x) => x.user);
+  const who = useStore((x) => x.auth);
   const [q, setQ] = useState('');
   const [golden, setGolden] = useState<GoldenQuestion[]>([]);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { api.golden().then(setGolden); }, []);
+  useEffect(() => { api.golden().then(setGolden); }, [user]);
 
-  const ask = async (question: string, asUser?: string) => {
+  // You always ask as yourself: identity comes from the login, never from a chip.
+  const ask = async (question: string) => {
     if (!question.trim()) return;
-    if (asUser && asUser !== user) patch({ user: asUser });
     setBusy(true);
     try {
-      const { query_id } = await api.query(question.trim(), asUser ?? user);
+      const { query_id } = await api.query(question.trim(), user);
       patch({ activeQueryId: query_id });
     } catch (e) { console.error(e); } finally { setBusy(false); }
   };
@@ -25,14 +27,14 @@ export function QueryDock() {
   return (
     <div className="dock">
       <form className="ask" onSubmit={(e) => { e.preventDefault(); void ask(q); }}>
-        <span className="ask-as">as {USERS.find((u) => u.id === user)?.label ?? user}</span>
+        <span className="ask-as">as {who?.display_name ?? 'guest'}</span>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ask the swarm anything about payroll…" aria-label="Question" />
         <button className="btn primary" disabled={busy || !q.trim()}>Ask</button>
       </form>
       <div className="chips">
         {golden.map((g) => (
-          <button key={g.question} className="chip" onClick={() => { setQ(g.question); void ask(g.question, g.user); }} title={g.wow || g.question}>
-            {g.user && g.user !== 'consultant' && <em>{g.user.replace('client:', '')}</em>}{g.question}
+          <button key={g.question} className="chip" onClick={() => { setQ(g.question); void ask(g.question); }} title={g.wow || g.question}>
+            {g.user === 'public' && user !== 'public' && <em>try as guest</em>}{g.question}
           </button>
         ))}
       </div>
@@ -78,7 +80,7 @@ export const AnswerSheet = forwardRef<HTMLDivElement>(function AnswerSheet(_, re
               const done = !!q.leafAnswers[l] || !!a;
               return (
                 <button key={l} className={`leaf ${done ? 'done' : 'wait'}`} onClick={() => patch({ selectedAgent: l })}>
-                  <b className="mono">{l}</b> {ag?.scope.description ?? ''}
+                  <b className="mono">{l}</b> {(ag?.scope.description ?? '').split(' · ').slice(-2).join(' · ')}
                   {q.routed?.confidences[l] != null && <span className="mono dim"> {(q.routed.confidences[l] * 100).toFixed(0)}%</span>}
                 </button>
               );
@@ -88,8 +90,14 @@ export const AnswerSheet = forwardRef<HTMLDivElement>(function AnswerSheet(_, re
             <div className="thinking"><i /><i /><i /> leaves are reading their full context</div>
           ) : (
             <div className="answer-grid">
+              <div className="a-head"><AnswerText text={a.answer} cites={a.citations.map((c) => c.doc_id)} part="head" /></div>
+              <div className="a-gauge">
+                <Gauge value={a.trust} />
+                {(() => { const as = assessmentFor(q, s); if (!as) return null; const t = toneOf('trust', as.trust.verdict); return <span className={`vchip v-${t} strong`}>{as.trust.verdict}</span>; })()}
+              </div>
+              <div className="a-ledger">{(() => { const as = assessmentFor(q, s); return as && <Ledger a={as} cites={a.citations} />; })()}</div>
               <div className="answer-main">
-                <AnswerText text={a.answer} cites={a.citations.map((c) => c.doc_id)} />
+                <AnswerText text={a.answer} cites={a.citations.map((c) => c.doc_id)} part="rest" />
                 {a.conflicts.length > 0 && (() => {
                   const cs = rankConflicts(a.conflicts.map((c) => s.conflicts.get(c.conflict_id) ?? c));
                   return (
@@ -102,8 +110,7 @@ export const AnswerSheet = forwardRef<HTMLDivElement>(function AnswerSheet(_, re
                 })()}
               </div>
               <div className="answer-side">
-                <Gauge value={a.trust} />
-                {a.owners.length > 0 && <div className="owners">Ask <b>{[...new Set(a.owners)].join(', ')}</b></div>}
+                <div className="col-label sub">Sources</div>
                 <ol className="cites">
                   {a.citations.map((c, i) => (
                     <li key={c.doc_id}>
@@ -124,11 +131,7 @@ export const AnswerSheet = forwardRef<HTMLDivElement>(function AnswerSheet(_, re
           {q.baseline ? (
             <>
               <p className="answer rag">{stripCites(q.baseline.answer)}</p>
-              <div className="rag-meta">
-                <span className="tag warn-tag">no conflict check</span>
-                <span className="tag">no owner</span>
-                <span className="tag">no trust score</span>
-              </div>
+              <BlankLedger />
               <div className="col-label sub">It read {q.baseline.retrieved.length} chunks</div>
               <ul className="rag-docs">
                 {q.baseline.retrieved.map((id) => {
@@ -209,7 +212,7 @@ function stripCites(t: string) {
 }
 
 /** First sentence becomes the headline; inline [doc_id] citations become numbered marks. */
-function AnswerText({ text, cites }: { text: string; cites: string[] }) {
+function AnswerText({ text, cites, part }: { text: string; cites: string[]; part?: 'head' | 'rest' }) {
   const clean = text.replace(/^\(fake\)\s*/, '').trim();
   const m = clean.match(/^(.+?[.!?])(\s+(?=[A-Z[(])|$)/s);
   const head = m ? m[1] : clean;
@@ -229,8 +232,8 @@ function AnswerText({ text, cites }: { text: string; cites: string[] }) {
   };
   return (
     <div className="answer-text">
-      <p className="answer-head">{render(head)}</p>
-      {rest && <p className="answer">{render(rest)}</p>}
+      {part !== 'rest' && <p className="answer-head">{render(head)}</p>}
+      {part !== 'head' && rest && <p className="answer">{render(rest)}</p>}
     </div>
   );
 }

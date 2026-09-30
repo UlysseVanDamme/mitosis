@@ -2,7 +2,7 @@ import {
   forceSimulation, forceLink, forceManyBody, forceCollide, forceRadial,
   type Simulation, type SimulationNodeDatum, type SimulationLinkDatum,
 } from 'd3-force';
-import { getState, onEvent, dimLabel, type AppState } from '../store';
+import { getState, onEvent, dimLabel, inboxOf, type AppState } from '../store';
 import type { Agent, MitosisEvent } from '../types';
 import { DIM_HUE, oklch, sourceColor } from './color';
 
@@ -24,7 +24,10 @@ interface Node extends SimulationNodeDatum {
 }
 interface Link extends SimulationLinkDatum<Node> { source: Node | string; target: Node | string }
 
-interface Particle { path: string[]; seg: number; t: number; color: string; trail: [number, number][]; kind: 'doc' | 'probe'; start: [number, number]; done?: boolean }
+interface Particle {
+  path: string[]; seg: number; t: number; color: string; trail: [number, number][]; kind: 'doc' | 'probe' | 'quarantine';
+  start: [number, number]; done?: boolean; router?: string; wait?: number; born?: number;
+}
 interface SplitAnim {
   parent: string; children: string[]; start: number; R: number; px: number; py: number;
   base: number; hue0: number; chroma0: number; dim: string; rule: string; splitId: string;
@@ -58,6 +61,20 @@ export class Scene {
   private queryDone = new Set<string>();
   private queryAt = 0;
   insetBottom = 0;
+  insetTop = 0;
+  /** Stage mode: three colours, scope names only, one spotlight at a time. */
+  private _stage = false;
+  get stage() { return this._stage; }
+  set stage(v: boolean) {
+    if (v === this._stage) return;
+    this._stage = v;
+    const s = getState();
+    for (const n of this.nodes.values()) { const a = s.agents.get(n.id); if (a) [n.hue, n.chroma] = v ? stageHue(a, s) : agentHue(a, s); }
+    if (v) this.labels = [];
+  }
+  spotlight: string | null = null;
+  spotRed = false; // the spotlit cell shows red (a catch), not its state colour
+  private spotA = 0; // eased spotlight dim amount
   private dt = 16.7;
   hover: string | null = null;
 
@@ -97,7 +114,7 @@ export class Scene {
   private ensureNode(a: Agent, at?: { x: number; y: number }): Node {
     let n = this.nodes.get(a.agent_id);
     if (!n) {
-      const [h, c] = agentHue(a, getState());
+      const [h, c] = this._stage ? stageHue(a, getState()) : agentHue(a, getState());
       n = {
         id: a.agent_id, depth: a.depth, r: 20, fill: 0, hue: h, chroma: c, hub: a.status === 'split' ? 1 : 0,
         pulse: 0, crackleAt: -1e9, verifiedAt: -1e9, dividingAt: -1e9, bornAt: now(), anim: false,
@@ -132,20 +149,29 @@ export class Scene {
 
   private handle(e: MitosisEvent, s: AppState) {
     switch (e.type) {
-      case 'reset': case 'snapshot':
+      case 'snapshot':
+        if (e.keepLayout) { this.particles = []; this.anims = []; this.labels = []; this.sync(s, false); break; }
+        this.nodes.clear(); this.particles = []; this.anims = []; this.labels = [];
+        this.queryLeaves.clear(); this.queryPath.clear(); this.queryDone.clear();
+        this.sync(s, false);
+        break;
+      case 'reset':
         this.nodes.clear(); this.particles = []; this.anims = []; this.labels = [];
         this.queryLeaves.clear(); this.queryPath.clear(); this.queryDone.clear();
         this.sync(s, false);
         break;
       case 'doc_routed': {
         const d = s.docs.get(e.doc_id);
-        const color = sourceColor(d?.source_type ?? '', 0.86);
+        const color = this.stage ? oklch(0.93, 0.02, 250) : e.router ? ROUTER_COLOR[e.router] ?? ROUTER_COLOR.rule : sourceColor(d?.source_type ?? '', 0.86);
         for (const leaf of e.leaves) {
           const path = pathTo(s, leaf, e.path);
-          this.particles.push({ path, seg: -1, t: 0, color, trail: [], kind: 'doc', start: this.inlet() });
+          this.particles.push({ path, seg: -1, t: 0, color, trail: [], kind: 'doc', start: this.inlet(), router: e.router });
         }
         break;
       }
+      case 'doc_quarantined':
+        this.particles.push({ path: ['A0'], seg: -1, t: 0, color: oklch(0.72, 0.01, 250), trail: [], kind: 'quarantine', start: this.inlet(), born: now() });
+        break;
       case 'doc_absorbed': {
         const n = this.nodes.get(e.agent_id);
         if (n) n.pulse = Math.max(n.pulse, 0.5);
@@ -207,7 +233,7 @@ export class Scene {
       (n as Node & { ang?: number }).ang = ang;
     });
     this.anims.push({ parent: parent.agent_id, children: children.map((c) => c.agent_id), start: now(), R: p.r, px, py, base, hue0: p.hue, chroma0: p.chroma, dim, rule, splitId });
-    this.labels.push({ x: px, y: py - p.r - 24, title: `${splitId} · split on ${dimLabel(dim)}`, body: rule.replace(/->/g, '→'), start: now(), hue: (DIM_HUE[dim] ?? DIM_HUE.root)[0], ids: [parent.agent_id, ...children.map((c) => c.agent_id)] });
+    if (!this.stage) this.labels.push({ x: px, y: py - p.r - 24, title: `${splitId} · split on ${dimLabel(dim)}`, body: rule.replace(/->/g, '→'), start: now(), hue: (DIM_HUE[dim] ?? DIM_HUE.root)[0], ids: [parent.agent_id, ...children.map((c) => c.agent_id)] });
     // Update the parent so it becomes a hub once the division completes.
     if (parent.agent_id !== 'A0') { p.fx = px; p.fy = py; }
     this.rebuildLinks(s);
@@ -221,6 +247,13 @@ export class Scene {
   toWorld(sx: number, sy: number): [number, number] {
     const cx = this.w / 2, cy = (this.h - this.insetBottom) / 2;
     return [(sx - cx) / this.cam.k + this.cam.x, (sy - cy) / this.cam.k + this.cam.y];
+  }
+  /** Screen position + radius of a cell (for DOM overlays). */
+  screenOf(id: string): { x: number; y: number; r: number } | null {
+    const n = this.nodes.get(id);
+    if (!n) return null;
+    const cx = this.w / 2, cy = (this.h - this.insetBottom) / 2;
+    return { x: cx + ((n.x ?? 0) - this.cam.x) * this.cam.k, y: cy + ((n.y ?? 0) - this.cam.y) * this.cam.k, r: (n.hub > 0.5 ? 8 : n.r) * this.cam.k };
   }
   hit(sx: number, sy: number): string | null {
     const [x, y] = this.toWorld(sx, sy);
@@ -259,9 +292,14 @@ export class Scene {
         n.r += (targetR2(a, s.budget) - n.r) * 0.1;
       }
       n.pulse *= 0.94;
-      const [h, c] = agentHue(a, s);
-      n.hue += (h - n.hue) * 0.05; n.chroma += (c - n.chroma) * 0.05;
+      const [h, c] = this.stage ? (this.spotlight === n.id && this.spotRed ? [25, 0.19] : stageHue(a, s)) : agentHue(a, s);
+      if (this.stage && Math.abs(h - n.hue) > 4) {
+        // Fade through grey instead of sweeping the hue wheel (red -> green must not pass through teal).
+        n.chroma += (0 - n.chroma) * 0.12;
+        if (n.chroma < 0.03) n.hue = h;
+      } else { n.hue += (h - n.hue) * 0.05; n.chroma += (c - n.chroma) * 0.05; }
     }
+    this.spotA += ((this.spotlight ? 1 : 0) - this.spotA) * 0.08;
     // Split animations drive child positions.
     this.anims = this.anims.filter((an) => {
       const k = clamp((t - an.start) / SPLIT_MS);
@@ -290,10 +328,17 @@ export class Scene {
     });
     // Particles.
     this.particles = this.particles.filter((p) => {
-      const segDur = p.kind === 'probe' ? 240 : 190;
-      p.t += this.dt / (p.seg === -1 ? 260 : segDur);
+      if (p.kind === 'quarantine') {
+        p.t = Math.min(1, p.t + this.dt / 700);
+        return t - (p.born ?? t) < 9000;
+      }
+      if (p.wait && p.wait > 0) { p.wait -= this.dt; return true; }
+      const segDur = p.kind === 'probe' ? 240 : p.router === 's1' ? 120 : p.router === 's2' ? 300 : 190;
+      p.t += this.dt / (p.seg === -1 ? (p.router === 's1' ? 170 : 260) : segDur);
       if (p.t >= 1) {
         p.t = 0; p.seg++;
+        // System 2 stops to think at every division it has to choose at.
+        if (p.router === 's2' && p.seg < p.path.length - 1) p.wait = 280;
         if (p.seg >= p.path.length - 1) {
           const leaf = this.nodes.get(p.path[p.path.length - 1]);
           if (leaf) leaf.pulse = 1;
@@ -318,7 +363,7 @@ export class Scene {
     // Camera fits the colony.
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     // During a query, frame the routed path (root -> leaves) so the answering cells are big enough to read.
-    const focus = this.queryLeaves.size > 0;
+    const focus = this.queryLeaves.size > 0 && !this.stage;
     for (const n of this.nodes.values()) {
       if (focus && !(this.queryLeaves.has(n.id) || this.queryPath.has(n.id) || n.id === 'A0')) continue;
       const r = (n.hub > 0.5 ? 10 : n.r) + (focus ? 90 : 34);
@@ -327,12 +372,12 @@ export class Scene {
     }
     if (!isFinite(x0)) { x0 = -100; x1 = 100; y0 = -100; y1 = 100; }
     // Visible window: leave room for the ticker (top-left) and legend (bottom).
-    const top = this.insetBottom ? 24 : 84, bottom = this.insetBottom ? 16 : 118;
+    const top = this.insetTop || (this.insetBottom ? 24 : 84), bottom = this.insetBottom ? 16 : this.stage ? 70 : 118;
     const vw = this.w - 60, vh = this.h - this.insetBottom - top - bottom;
     const k = Math.min(vw / (x1 - x0), vh / (y1 - y0), focus ? 1.6 : 3);
     // Zoom out quickly (never clip), zoom in slowly.
     const ease = (r: number) => 1 - Math.pow(1 - r, this.dt / 16.7);
-    this.cam.k += (k - this.cam.k) * ease(k < this.cam.k ? 0.09 : 0.03);
+    this.cam.k += (k - this.cam.k) * ease(k < this.cam.k ? 0.16 : 0.03);
     this.cam.x += ((x0 + x1) / 2 - this.cam.x) * ease(0.07);
     // Offset so the colony centres in the visible window, not the canvas.
     const shift = (top - bottom) / 2 / this.cam.k;
@@ -387,14 +432,25 @@ export class Scene {
 
     // Particles
     for (const p of this.particles) {
+      if (p.kind === 'quarantine') { this.drawQuarantine(p, t); continue; }
+      if (p.wait && p.wait > 0) {
+        // 'thinking' pulse on the hub System 2 is deciding at
+        const hp = this.nodePos(p.path[p.seg]);
+        if (hp) {
+          const ph = (t % 560) / 560;
+          ctx.beginPath(); ctx.arc(hp[0], hp[1], (8 + ph * 14) / k, 0, Math.PI * 2);
+          ctx.strokeStyle = ROUTER_COLOR.s2.replace(/,1\)$/, `,${0.8 * (1 - ph)})`); ctx.lineWidth = 1.6 / k; ctx.stroke();
+        }
+      }
       const pts = p.path.map((id) => this.nodePos(id));
       let from: [number, number] | null, to: [number, number] | null;
       if (p.seg === -1) { from = p.start; to = pts[0]; } else { from = pts[p.seg]; to = pts[p.seg + 1]; }
       if (!from || !to) continue;
       const e = easeOut(p.t) * 0.6 + p.t * 0.4;
       const x = from[0] + (to[0] - from[0]) * e, y = from[1] + (to[1] - from[1]) * e;
-      p.trail.push([x, y]); if (p.trail.length > 12) p.trail.shift();
+      if (!p.wait || p.wait <= 0) { p.trail.push([x, y]); if (p.trail.length > (p.router === 's1' ? 18 : 12)) p.trail.shift(); }
       for (let i = 0; i < p.trail.length; i++) {
+        if (p.router === 's2' && i % 3 === 1) continue; // dashed: slow, deliberate
         const [tx, ty] = p.trail[i];
         ctx.beginPath(); ctx.arc(tx, ty, ((p.kind === 'probe' ? 3 : 2.2) * (i + 1)) / p.trail.length / k * 1.2, 0, Math.PI * 2);
         ctx.fillStyle = p.color.replace(/,1\)$/, `,${(0.35 * (i + 1)) / p.trail.length})`);
@@ -515,6 +571,7 @@ export class Scene {
     const focusDim = this.queryLeaves.size > 0 && !qLeaf;
     ctx.save();
     if (focusDim) ctx.globalAlpha = 0.28;
+    if (this.stage && this.spotlight !== n.id) ctx.globalAlpha *= 1 - 0.78 * this.spotA;
 
     // halo
     const glow = 0.16 + over * 0.35 + n.pulse * 0.25 + (dividing ? 0.35 : 0) + (qLeaf ? 0.25 : 0);
@@ -541,7 +598,7 @@ export class Scene {
       const ang = (i / M) * Math.PI * 2 + t / (5000 + i * 90) + n.seed;
       const rad = r * (0.74 + 0.08 * Math.sin(i * 1.7 + t / 1300));
       ctx.beginPath(); ctx.arc(x + Math.cos(ang) * rad, y + Math.sin(ang) * rad, Math.max(1.3, r * 0.045), 0, Math.PI * 2);
-      ctx.fillStyle = sourceColor(d?.source_type ?? '', 0.85, 0.85); ctx.fill();
+      ctx.fillStyle = this.stage ? oklch(0.82, 0.01, 250, 0.55) : sourceColor(d?.source_type ?? '', 0.85, 0.85); ctx.fill();
     }
 
     // nucleus ring: tokens / budget
@@ -554,7 +611,7 @@ export class Scene {
     if (f > 0.005) {
       ctx.beginPath(); ctx.arc(x, y, nr, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2);
       const ringH = over > 0 ? H + (70 - H) * over : H;
-      ctx.strokeStyle = oklch(0.86, Math.min(0.18, C + over * 0.08), over > 0.6 ? 55 : ringH, 1);
+      ctx.strokeStyle = this.stage ? oklch(0.9, C, H, 0.85) : oklch(0.86, Math.min(0.18, C + over * 0.08), over > 0.6 ? 55 : ringH, 1);
       ctx.stroke();
     }
     ctx.lineCap = 'butt';
@@ -564,7 +621,7 @@ export class Scene {
     ctx.translate(x, y); ctx.scale(1 / k, 1 / k);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const kr = r * k;
-    if (kr > 22) {
+    if (kr > 22 && !this.stage) {
       ctx.font = `500 ${Math.min(13, Math.max(10, kr * 0.24))}px "JetBrains Mono", monospace`;
       ctx.fillStyle = oklch(0.95, 0.02, H, 0.9);
       ctx.fillText(n.id, 0, 0.5);
@@ -572,14 +629,15 @@ export class Scene {
     // While a query is on screen, only the routed leaves keep their names (the dish is small then).
     if (!this.queryLeaves.size || qLeaf || this.hover === n.id || s.selectedAgent === n.id) {
       ctx.textBaseline = 'top';
-      ctx.font = '600 14px "Space Grotesk", sans-serif';
+      ctx.font = this.stage ? '500 17px "Space Grotesk", sans-serif' : '600 14px "Space Grotesk", sans-serif';
       ctx.fillStyle = oklch(0.95, 0.03, H, 0.95);
       const label = a.scope.dimension === 'root' ? 'Everything' : short(a.scope.value === 'other' ? a.scope.description.split(' · ').pop() ?? 'other' : labelVal(a));
       ctx.fillText(label, 0, kr * 1.08 + 5);
-      if (kr > 30 || qLeaf || this.hover === n.id) {
+      if (!this.stage && (kr > 30 || qLeaf || this.hover === n.id)) {
         ctx.font = '400 12px "JetBrains Mono", monospace';
         ctx.fillStyle = oklch(0.8, 0.03, H, 0.78);
-        ctx.fillText(`${(a.tokens / 1000).toFixed(1)}k · ${a.owner.split(' ')[0]}`, 0, kr * 1.08 + 23);
+        const debt = s.lens === 'debt' ? debtOf(a, s) : null;
+        ctx.fillText(debt ? (debt.open + debt.ownerless ? `${debt.open} open · ${debt.ownerless} ownerless` : 'no debt') : `${(a.tokens / 1000).toFixed(1)}k · ${(a.owner ?? '').split(' ')[0]}`, 0, kr * 1.08 + 23);
       }
     }
     ctx.restore();
@@ -624,7 +682,7 @@ export class Scene {
       ctx.beginPath(); ctx.arc(x, y, r * (1 + easeOut(va / 1800) * 1.1), 0, Math.PI * 2);
       ctx.strokeStyle = oklch(0.82, 0.17, 150, 1 - va / 1800); ctx.lineWidth = 3 / k; ctx.stroke();
     }
-    if (open > 0) {
+    if (open > 0 && !this.stage) {
       const bx = x + r * 0.72, by = y - r * 0.72;
       ctx.save(); ctx.translate(bx, by); ctx.scale(1 / k, 1 / k);
       ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2);
@@ -637,12 +695,47 @@ export class Scene {
     ctx.restore();
   }
 
+  private drawQuarantine(p: Particle, t: number) {
+    const { ctx } = this;
+    const k = this.cam.k;
+    const root = this.nodes.get('A0');
+    if (!root) return;
+    const rx = root.x ?? 0, ry = root.y ?? 0;
+    const [sx, sy] = p.start;
+    const dx = rx - sx, dy = ry - sy, dist = Math.hypot(dx, dy) || 1;
+    // Stop just outside the membrane.
+    const stop = Math.max(0, dist - (root.hub > 0.5 ? 14 : root.r) - 16 / k);
+    const e = easeOut(p.t);
+    const x = sx + (dx / dist) * stop * e, y = sy + (dy / dist) * stop * e;
+    const age = t - (p.born ?? t);
+    const fade = clamp((9000 - age) / 1200);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    if (p.t >= 1) {
+      // bump against the membrane
+      const ph = (age % 1400) / 1400;
+      ctx.beginPath(); ctx.arc(x, y, (9 + ph * 10) / k, 0, Math.PI * 2);
+      ctx.strokeStyle = oklch(0.7, 0.02, 250, 0.5 * (1 - ph)); ctx.lineWidth = 1.4 / k; ctx.stroke();
+    }
+    ctx.translate(x, y); ctx.scale(1 / k, 1 / k);
+    ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2);
+    ctx.fillStyle = oklch(0.42, 0.01, 250, 0.95); ctx.fill();
+    ctx.strokeStyle = oklch(0.8, 0.01, 250, 0.9); ctx.lineWidth = 1.2; ctx.stroke();
+    // padlock
+    ctx.fillStyle = oklch(0.92, 0.01, 250);
+    ctx.fillRect(-3.5, -1, 7, 5.5);
+    ctx.beginPath(); ctx.arc(0, -1.5, 2.4, Math.PI, 0); ctx.strokeStyle = oklch(0.92, 0.01, 250); ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.restore();
+  }
+
   private drawHub(n: Node, a: Agent, t: number) {
     const { ctx } = this;
     const k = this.cam.k;
     const x = n.x ?? 0, y = n.y ?? 0;
     const r = 5 / Math.sqrt(k) + (1 - n.hub) * n.r;
     const onPath = this.queryPath.has(n.id);
+    ctx.save();
+    if (this.stage) ctx.globalAlpha = 1 - 0.78 * this.spotA;
     ctx.beginPath(); ctx.arc(x, y, r * 2.4, 0, Math.PI * 2);
     ctx.fillStyle = oklch(0.75, n.chroma, n.hue, 0.08 + 0.04 * Math.sin(t / 800 + n.seed)); ctx.fill();
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -652,8 +745,9 @@ export class Scene {
     ctx.fillStyle = oklch(0.82, 0.03, n.hue, 0.72);
     if (a.agent_id === 'A0' || onPath || this.hover === n.id) {
       const lab = a.agent_id === 'A0' ? 'A0 · root' : `${a.agent_id} · ${short(labelVal(a), 14)}`;
-      ctx.fillText(lab, 0, -r * k - 8);
+      if (!this.stage) ctx.fillText(lab, 0, -r * k - 8);
     }
+    ctx.restore();
     ctx.restore();
   }
 
@@ -741,13 +835,41 @@ function targetR2(a: Agent, budget: number) {
   return 18 + 30 * Math.sqrt(clamp(a.tokens / budget, 0, 1.35));
 }
 
+const ROUTER_COLOR: Record<string, string> = {
+  rule: oklch(0.94, 0.02, 250),
+  s1: oklch(0.88, 0.13, 205),
+  s2: oklch(0.84, 0.15, 68),
+};
+
+function debtOf(a: Agent, s: AppState) {
+  let open = 0;
+  for (const c of s.conflicts.values()) if (c.status === 'open' && c.agent_id === a.agent_id) open++;
+  let ownerless = 0;
+  for (const d of a.doc_ids) if (s.docs.get(d)?.owner === null) ownerless++;
+  return { open, ownerless };
+}
+
 function agentHue(a: Agent, s: AppState): [number, number] {
+  if (s.lens === 'debt') {
+    if (a.status === 'split') return [250, 0.02];
+    const { open, ownerless } = debtOf(a, s);
+    const debt = open * 2 + ownerless;
+    return debt === 0 ? [155, 0.1] : debt <= 2 ? [80, 0.13] : [28, 0.17];
+  }
   const [h, c] = DIM_HUE[a.scope.dimension] ?? DIM_HUE.root;
   if (!a.parent_id) return [h, c];
   const p = s.agents.get(a.parent_id);
   const idx = p ? Math.max(0, p.children.indexOf(a.agent_id)) : 0;
   const n = p?.children.length ?? 1;
   return [h + (idx - (n - 1) / 2) * 22, c];
+}
+
+/** Stage palette: grey = knowledge, red = open contradiction, green = verified. */
+function stageHue(a: Agent, s: AppState): [number, number] {
+  if (a.status === 'split') return [250, 0.02];
+  if (inboxOf(a, s) > 0) return [25, 0.19];
+  for (const c of s.conflicts.values()) if (c.status === 'verified' && c.agent_id === a.agent_id) return [152, 0.15];
+  return [250, 0.025];
 }
 
 function pathTo(s: AppState, leaf: string, given: string[]): string[] {

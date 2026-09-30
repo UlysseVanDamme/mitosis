@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, MOCK } from '../api';
 import { patch, stats, useStore } from '../store';
-import { USERS } from './util';
+import { UserSwitcher } from './Auth';
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: string }) {
   const [bump, setBump] = useState(false);
@@ -42,20 +42,25 @@ export function TopBar() {
         <Stat label="splits" value={st.splits} tone="split" />
         <Stat label="conflicts" value={st.conflicts} tone={st.open ? 'warn' : ''} />
         <Stat label="verified" value={st.verified} tone="ok" />
+        {st.redacted > 0 && <Stat label="PII redacted" value={st.redacted} tone="muted" />}
+        {st.quarantined > 0 && <Stat label="quarantined" value={st.quarantined} tone="muted" />}
         {s.ingesting && <div className="ingesting"><i /> reading</div>}
       </div>
 
       <div className="controls">
-        <div className="seg" role="radiogroup" aria-label="Ask as">
-          {USERS.map((u) => (
-            <button key={u.id} role="radio" aria-checked={s.user === u.id} className={s.user === u.id ? 'on' : ''} onClick={() => patch({ user: u.id })}>{u.label}</button>
-          ))}
-        </div>
-        <button className="btn primary" disabled={busy || s.ingesting} onClick={() => run(api.ingest)}>
-          {s.ingesting ? 'Ingesting…' : 'Start ingest'}
-        </button>
-        <button className="btn ghost" disabled={busy} onClick={() => run(api.reset)}>Reset</button>
-        <button className="btn ghost" disabled={busy} onClick={() => run(api.replay)}>Replay</button>
+        {s.auth?.role === 'client' && (
+          <button className="btn ghost" onClick={() => patch({ view: 'portal', activeQueryId: null })}>Client portal view</button>
+        )}
+        {s.auth?.role === 'admin' && (
+          <>
+            <button className="btn primary" disabled={busy || s.ingesting} onClick={() => run(api.ingest)}>
+              {s.ingesting ? 'Ingesting…' : 'Start ingest'}
+            </button>
+            <button className="btn ghost" disabled={busy} onClick={() => run(api.reset)}>Reset</button>
+            <button className="btn ghost" disabled={busy} onClick={() => run(api.replay)}>Replay</button>
+          </>
+        )}
+        <UserSwitcher />
       </div>
     </header>
   );

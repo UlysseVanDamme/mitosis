@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type {
-  Agent, Citation, Claim, Conflict, Doc, MitosisEvent, ServerState, Split, VerifiedFact,
+  Agent, Assessment, Citation, Claim, Conflict, Doc, Impact, MitosisEvent, RoutingStats, ServerState, Split, User, VerifiedFact,
 } from './types';
 
 export interface QueryState {
@@ -12,13 +12,13 @@ export interface QueryState {
   leafAnswers: Record<string, { answer: string; citations: string[] }>;
   answer?: {
     answer: string; citations: Citation[]; conflicts: Conflict[];
-    trust: number; owners: string[]; leaves: string[];
+    trust: number; owners: string[]; leaves: string[]; assessment?: Assessment;
   };
   baseline?: { answer: string; retrieved: string[] };
 }
 
-export interface LogEntry { id: number; ts: number; type: string; text: string; tone: 'doc' | 'split' | 'conflict' | 'query' | 'ok' | 'muted' }
-export interface Toast { id: number; tone: 'conflict' | 'split' | 'ok'; title: string; body: string }
+export interface LogEntry { id: number; ts: number; type: string; text: string; tone: 'doc' | 'route2' | 'split' | 'conflict' | 'query' | 'ok' | 'muted' | 'quarantine' }
+export interface Toast { id: number; tone: 'conflict' | 'split' | 'ok' | 'quarantine'; title: string; body: string }
 
 export interface AppState {
   agents: Map<string, Agent>;
@@ -38,9 +38,22 @@ export interface AppState {
   activeQueryId: string | null;
   selectedAgent: string | null;
   connected: boolean;
-  user: string;
+  user: string; // access string sent with queries (consultant | client:X | public)
   recent: string[];
+  auth: User | null;
+  routing: RoutingStats;
+  redactions: number;
+  redactKinds: string[];
+  quarantined: string[];
+  lens: 'scope' | 'debt';
+  view: 'lab' | 'portal';
+  scrub: { i: number; n: number } | null; // time-lapse position; null = live
+  loginFor: string | null; // username the login dialog is open for ('' = pick)
+  mode: 'stage' | 'explore';
+  impacts: Map<string, Impact>; // by conflict_id
 }
+
+export const ZERO_ROUTING: RoutingStats = { rule: 0, s1: 0, s2: 0, s1_ms_avg: 0, s2_ms_avg: 0 };
 
 function empty(): AppState {
   return {
@@ -49,6 +62,9 @@ function empty(): AppState {
     budget: 6000, docsAbsorbed: new Set(), queued: 0, ingesting: false, ingestDone: false,
     log: [], toasts: [], queries: new Map(), activeQueryId: null, selectedAgent: null,
     connected: false, user: 'consultant', recent: [],
+    auth: null, routing: ZERO_ROUTING, redactions: 0, redactKinds: [], quarantined: [],
+    lens: 'scope', view: 'lab', scrub: null, loginFor: null,
+    mode: new URLSearchParams(location.search).get('mode') === 'explore' ? 'explore' : 'stage', impacts: new Map(),
   };
 }
 
@@ -115,7 +131,70 @@ export function dimLabel(d: string) {
   return ({ pc: 'paritair comité', country: 'country', client: 'client', period: 'period', topic: 'topic', source_type: 'source type', root: 'root' } as Record<string, string>)[d] ?? d;
 }
 
-export function applyEvent(e: MitosisEvent) {
+export const ROUTER_LABEL: Record<string, string> = { rule: 'rule', s1: 'System 1', s2: 'System 2' };
+export function fmtMs(ms: number) { return ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : ms >= 10 ? `${Math.round(ms)} ms` : `${ms.toFixed(1)} ms`; }
+
+function bumpRouting(r: RoutingStats, router: string, ms: number): RoutingStats {
+  const o = { ...r };
+  if (router === 'rule') o.rule += 1;
+  else if (router === 's1') { o.s1_ms_avg = (o.s1_ms_avg * o.s1 + ms) / (o.s1 + 1); o.s1 += 1; }
+  else if (router === 's2') { o.s2_ms_avg = (o.s2_ms_avg * o.s2 + ms) / (o.s2 + 1); o.s2 += 1; }
+  return o;
+}
+
+function keepUi(p: AppState) {
+  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view, mode: p.mode };
+}
+
+// ---------- time-lapse: every colony event since the last reset ----------
+const TIMELINE_TYPES = new Set(['snapshot', 'doc_queued', 'doc_routed', 'doc_absorbed', 'conflict_detected', 'split_started', 'agent_split', 'agent_updated', 'conflict_verified', 'ingest_done', 'routing_stats', 'doc_quarantined', 'doc_redacted', 'impact_detected']);
+let timeline: MitosisEvent[] = [];
+let silent = false;
+export function timelineLength() { return timeline.length; }
+
+/** Rebuild the colony as it was after `i` timeline events, without animation. */
+export function scrubTo(i: number) {
+  const evs = timeline.slice();
+  const n = evs.length;
+  i = Math.max(0, Math.min(n, i));
+  const ui = { ...keepUi(state), queries: state.queries, activeQueryId: state.activeQueryId };
+  silent = true;
+  try {
+    state = { ...empty(), ...ui };
+    for (const e of evs.slice(0, i)) applyEvent(e);
+  } finally { silent = false; }
+  timeline = evs;
+  const s = state;
+  state = { ...s, scrub: i >= n ? null : { i, n }, ingesting: false };
+  const snap: ServerState = {
+    agents: [...s.agents.values()], splits: s.splits, conflicts: [...s.conflicts.values()], facts: s.facts,
+    docs: Object.fromEntries(s.docs), budget: s.budget,
+  };
+  eventListeners.forEach((l) => l({ type: 'snapshot', ts: Date.now() / 1000, state: snap, keepLayout: true }, state));
+  emit();
+}
+
+/** Step one event forward with full animation (time-lapse playback). */
+export function scrubStep(): boolean {
+  const sc = state.scrub;
+  if (!sc) return false;
+  const e = timeline[sc.i];
+  if (!e) { patch({ scrub: null }); return false; }
+  const evs = timeline;
+  silent = true; // don't re-record
+  applyEvent(e, true);
+  silent = false;
+  timeline = evs;
+  const i = sc.i + 1;
+  patch({ scrub: i >= evs.length ? null : { i, n: evs.length } });
+  return i < evs.length;
+}
+
+export function applyEvent(e: MitosisEvent, animate = false) {
+  if (!silent && TIMELINE_TYPES.has(e.type) && !(e.type === 'snapshot' && e.keepLayout)) {
+    if (e.type === 'snapshot') timeline = [];
+    timeline.push(e);
+  }
   // Shallow-copy containers so React selectors see fresh references.
   let s: AppState = {
     ...state,
@@ -126,14 +205,15 @@ export function applyEvent(e: MitosisEvent) {
 
   switch (e.type) {
     case 'reset': {
-      const keep = { connected: state.connected, user: state.user };
-      s = { ...empty(), ...keep };
+      s = { ...empty(), ...keepUi(state) };
+      timeline = [];
       log(s, e, 'Swarm reset. One cell, A0, holds everything.', 'muted');
       break;
     }
     case 'snapshot': {
       const st: ServerState = e.state;
-      s = { ...empty(), connected: state.connected, user: state.user, log: state.log, queries: s.queries };
+      s = { ...empty(), ...keepUi(state), log: state.log, queries: s.queries, activeQueryId: state.activeQueryId };
+      if (!e.keepLayout) timeline = [];
       s.budget = st.budget ?? 6000;
       s.agents = new Map();
       for (const a of st.agents || []) upsertAgent(s, a);
@@ -142,6 +222,10 @@ export function applyEvent(e: MitosisEvent) {
       for (const c of st.conflicts || []) s.conflicts.set(c.conflict_id, c);
       s.facts = [...(st.facts || [])];
       s.docs = new Map(Object.entries(st.docs || {}));
+      s.quarantined = [...s.docs.values()].filter((d) => d.quarantined).map((d) => d.doc_id);
+      const rt = (st.stats as unknown as { routing?: RoutingStats; redactions?: number } | undefined);
+      if (rt?.routing) s.routing = rt.routing;
+      if (typeof rt?.redactions === 'number') s.redactions = rt.redactions;
       s.docsAbsorbed = new Set();
       for (const a of s.agents.values()) for (const d of a.doc_ids) s.docsAbsorbed.add(d);
       log(s, e, `Snapshot: ${s.agents.size} agents, ${s.splits.length} splits.`, 'muted');
@@ -159,7 +243,27 @@ export function applyEvent(e: MitosisEvent) {
     }
     case 'doc_routed': {
       const d = s.docs.get(e.doc_id);
-      log(s, e, `${d?.title ?? e.doc_id} → ${e.leaves.join(', ')}`, 'doc');
+      const via = e.router ? ` · ${ROUTER_LABEL[e.router]}${e.ms != null ? ` ${fmtMs(e.ms)}` : ''}${e.margin != null ? `, margin ${e.margin.toFixed(2)}` : ''}` : '';
+      log(s, e, `${d?.title ?? e.doc_id} → ${e.leaves.join(', ')}${via}`, e.router === 's2' ? 'route2' : 'doc');
+      if (e.router) s.routing = bumpRouting(s.routing, e.router, e.ms ?? 0);
+      break;
+    }
+    case 'routing_stats': {
+      s.routing = { rule: e.rule, s1: e.s1, s2: e.s2, s1_ms_avg: e.s1_ms_avg, s2_ms_avg: e.s2_ms_avg };
+      break;
+    }
+    case 'doc_quarantined': {
+      s.docs = new Map(s.docs);
+      const prev = s.docs.get(e.doc_id);
+      s.docs.set(e.doc_id, { ...prev, doc_id: e.doc_id, title: e.title, source: prev?.source ?? '', source_type: prev?.source_type ?? '', quarantined: true, quarantine_reason: e.reason });
+      if (!s.quarantined.includes(e.doc_id)) s.quarantined = [...s.quarantined, e.doc_id];
+      log(s, e, `Quarantined ${e.title}: ${e.reason}`, 'quarantine');
+      break;
+    }
+    case 'doc_redacted': {
+      s.redactions += e.count;
+      s.redactKinds = [...new Set([...s.redactKinds, ...e.kinds])];
+      log(s, e, `Redacted ${e.count} × ${e.kinds.join(', ')} in ${s.docs.get(e.doc_id)?.title ?? e.doc_id}`, 'muted');
       break;
     }
     case 'doc_absorbed': {
@@ -213,7 +317,7 @@ export function applyEvent(e: MitosisEvent) {
     case 'query_routed': {
       const q = { ...query(s, e.query_id), routed: { path: e.path, leaves: e.leaves, confidences: e.confidences } };
       s.queries.set(e.query_id, q);
-      log(s, e, `Query fanned out to ${e.leaves.join(', ')}`, 'query');
+      log(s, e, `Query fanned out to ${e.leaves.join(', ')}${e.router ? ` · ${ROUTER_LABEL[e.router]}${e.ms != null ? ` ${fmtMs(e.ms)}` : ''}` : ''}`, 'query');
       break;
     }
     case 'leaf_answer': {
@@ -224,7 +328,7 @@ export function applyEvent(e: MitosisEvent) {
       break;
     }
     case 'query_answer': {
-      const q = { ...query(s, e.query_id), answer: { answer: e.answer, citations: e.citations, conflicts: e.conflicts, trust: e.trust, owners: e.owners, leaves: e.leaves } };
+      const q = { ...query(s, e.query_id), answer: { answer: e.answer, citations: e.citations, conflicts: e.conflicts, trust: e.trust, owners: e.owners, leaves: e.leaves, assessment: e.assessment } };
       s.queries.set(e.query_id, q);
       if (!s.activeQueryId) s.activeQueryId = e.query_id;
       log(s, e, `Answer ready, trust ${e.trust}`, 'ok');
@@ -247,6 +351,12 @@ export function applyEvent(e: MitosisEvent) {
       log(s, e, `Verified by ${e.fact.verified_by}: ${e.fact.statement}`, 'ok');
       break;
     }
+    case 'impact_detected': {
+      const { type: _t, ts: _ts, ...imp } = e;
+      s.impacts = new Map(s.impacts); s.impacts.set(e.conflict_id, imp);
+      log(s, e, `Impact: ${e.summary}`, 'conflict');
+      break;
+    }
     case 'ingest_done': {
       s.ingesting = false;
       s.ingestDone = true;
@@ -255,9 +365,14 @@ export function applyEvent(e: MitosisEvent) {
     }
   }
   state = s;
+  if (silent && !animate) return;
   eventListeners.forEach((l) => l(e, state));
   emit();
 
+  if (state.mode === 'stage') return; // Stage mode: no toast stacks.
+  if (e.type === 'doc_quarantined') {
+    pushToast({ tone: 'quarantine', title: 'Quarantined', body: `${quarantineKind(e.reason)} in ${state.docs.get(e.doc_id)?.source || e.title}` });
+  }
   if (e.type === 'conflict_detected' && !state.activeQueryId) {
     // Throttle: a burst of conflicts should read as a pulse, not a wall. The headline kind always shows.
     const t = Date.now();
@@ -266,6 +381,10 @@ export function applyEvent(e: MitosisEvent) {
       pushToast({ tone: 'conflict', title: `${CONFLICT_KIND[e.conflict.kind] ?? 'Conflict'} · ${e.agent_id}`, body: e.conflict.summary });
     }
   }
+}
+
+function quarantineKind(reason: string) {
+  return /inject|instruction/i.test(reason) ? 'Prompt injection' : reason.split(/[.:]/)[0];
 }
 
 export function stats(s: AppState) {
@@ -279,5 +398,15 @@ export function stats(s: AppState) {
     conflicts: conflicts.length,
     open: conflicts.filter((c) => c.status === 'open').length,
     verified: conflicts.filter((c) => c.status === 'verified').length,
+    redacted: s.redactions,
+    quarantined: s.quarantined.length,
   };
+}
+
+/** Open conflicts needing a human in this cell: the server's count, else derived. */
+export function inboxOf(a: Agent, s: AppState): number {
+  if (typeof a.inbox === 'number') return a.inbox;
+  let n = 0;
+  for (const c of s.conflicts.values()) if (c.status === 'open' && (c.agent_id === a.agent_id)) n++;
+  return n;
 }
