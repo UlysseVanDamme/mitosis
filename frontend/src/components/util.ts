@@ -2,12 +2,6 @@ import type { AppState } from '../store';
 import type { Claim, Conflict } from '../types';
 import { DIM_HUE, SOURCE_HUE, oklch } from '../canvas/color';
 
-export const USERS = [
-  { id: 'consultant', label: 'Consultant' },
-  { id: 'client:Brouwerij Van Dessel', label: 'Client · Van Dessel' },
-  { id: 'public', label: 'Public' },
-];
-
 export const KIND_LABEL: Record<string, string> = {
   forecast_vs_final: 'Forecast vs final',
   temporal_supersession: 'Superseded',

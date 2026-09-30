@@ -4,6 +4,9 @@ import { getState, patch, useStore } from './store';
 import { TopBar } from './components/TopBar';
 import { Legend, SidePanel, Ticker, Toasts } from './components/SidePanel';
 import { AnswerSheet, Drawer, QueryDock } from './components/Query';
+import { Login } from './components/Auth';
+import { RoutingHud, StageTools } from './components/Hud';
+import { Portal } from './components/Portal';
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -11,6 +14,9 @@ export function App() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const active = useStore((s) => s.activeQueryId);
   const ingesting = useStore((s) => s.ingesting);
+  const view = useStore((s) => s.view);
+  const role = useStore((s) => s.auth?.role);
+  const portal = view === 'portal' && role === 'client';
 
   useEffect(() => {
     const c = canvasRef.current!;
@@ -48,20 +54,26 @@ export function App() {
   }, [active]);
 
   return (
-    <div className="app">
+    <>
+    {portal && <Portal />}
+    <div className="app" hidden={portal}>
       <TopBar />
       <main className="stage">
         <canvas ref={canvasRef} className="dish" />
+        <RoutingHud />
         <Ticker />
         <Toasts />
         {!active && !ingesting && <Legend />}
         <AnswerSheet key={active ?? "none"} ref={sheetRef} />
+        {!active && <StageTools />}
         <Hint />
       </main>
       <SidePanel />
       <QueryDock />
       <Drawer />
     </div>
+    <Login />
+    </>
   );
 }
 
@@ -71,7 +83,7 @@ function Hint() {
   return (
     <div className="hint">
       <b>One cell. Zero documents.</b>
-      <span>Start ingest and watch it divide when its knowledge outgrows its context.</span>
+      <span>{getState().auth?.role === 'admin' ? 'Start ingest and watch it divide when its knowledge outgrows its context.' : 'Waiting for the knowledge desk to start ingest. The cell divides when its knowledge outgrows its context.'}</span>
     </div>
   );
 }
