@@ -70,7 +70,7 @@ export class Scene {
         return (s.hub > 0.5 ? 10 : s.r) + targetR(t) + 34;
       }).strength(0.55))
       .force('charge', forceManyBody<Node>().strength((d) => (d.hub > 0.5 ? -40 : -50 - d.r * d.r * 0.3)).distanceMax(420))
-      .force('collide', forceCollide<Node>().radius((d) => (d.hub > 0.5 ? 14 : d.r + 22)).strength(0.9))
+      .force('collide', forceCollide<Node>().radius((d) => (d.hub > 0.5 ? 16 : d.r + 36)).strength(0.9))
       .force('radial', forceRadial<Node>((d) => d.depth * 120, 0, 0).strength((d) => (d.depth === 0 ? 0 : 0.07)))
       .alphaTarget(0.012)
       .velocityDecay(0.35);
@@ -566,15 +566,18 @@ export class Scene {
       ctx.fillStyle = oklch(0.95, 0.02, H, 0.9);
       ctx.fillText(n.id, 0, 0.5);
     }
-    ctx.textBaseline = 'top';
-    ctx.font = '600 14px "Space Grotesk", sans-serif';
-    ctx.fillStyle = oklch(0.95, 0.03, H, 0.95);
-    const label = a.scope.dimension === 'root' ? 'Everything' : short(a.scope.value === 'other' ? a.scope.description.split(' · ').pop() ?? 'other' : labelVal(a));
-    ctx.fillText(label, 0, kr * 1.08 + 5);
-    if (kr > 30 || qLeaf || this.hover === n.id) {
-      ctx.font = '400 12px "JetBrains Mono", monospace';
-      ctx.fillStyle = oklch(0.8, 0.03, H, 0.78);
-      ctx.fillText(`${(a.tokens / 1000).toFixed(1)}k · ${a.owner.split(' ')[0]}`, 0, kr * 1.08 + 23);
+    // While a query is on screen, only the routed leaves keep their names (the dish is small then).
+    if (!this.queryLeaves.size || qLeaf || this.hover === n.id || s.selectedAgent === n.id) {
+      ctx.textBaseline = 'top';
+      ctx.font = '600 14px "Space Grotesk", sans-serif';
+      ctx.fillStyle = oklch(0.95, 0.03, H, 0.95);
+      const label = a.scope.dimension === 'root' ? 'Everything' : short(a.scope.value === 'other' ? a.scope.description.split(' · ').pop() ?? 'other' : labelVal(a));
+      ctx.fillText(label, 0, kr * 1.08 + 5);
+      if (kr > 30 || qLeaf || this.hover === n.id) {
+        ctx.font = '400 12px "JetBrains Mono", monospace';
+        ctx.fillStyle = oklch(0.8, 0.03, H, 0.78);
+        ctx.fillText(`${(a.tokens / 1000).toFixed(1)}k · ${a.owner.split(' ')[0]}`, 0, kr * 1.08 + 23);
+      }
     }
     ctx.restore();
 

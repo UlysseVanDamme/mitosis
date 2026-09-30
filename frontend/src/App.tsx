@@ -55,7 +55,7 @@ export function App() {
         <Ticker />
         <Toasts />
         {!active && !ingesting && <Legend />}
-        <AnswerSheet ref={sheetRef} />
+        <AnswerSheet key={active ?? "none"} ref={sheetRef} />
         <Hint />
       </main>
       <SidePanel />
