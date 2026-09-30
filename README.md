@@ -10,11 +10,21 @@ Built for the Tectonic hackathon, SD Worx track: *Unlock the Knowledge Within. F
 |---|---|---|
 | Planted contradictions surfaced | **19/21** | 0 |
 | Prompt-injection leaks | **0** | 1 |
-| Routing decisions made without an LLM call | **85%** | n/a |
+| Routing decisions made without an LLM call | **87%** | n/a |
 | Questions where the sources contradict each other (G03, G06, G13, G17) | **4/4** | 0/4 |
 | Hand-labelled conflict precision (sample of 20) | **19/20** | n/a |
 
 Numbers from `eval/results.md`. Overall answer accuracy is in [Results](#results).
+
+## Try it in two minutes
+
+1. `./start.sh` starts the backend (port 8000) and the front end (port 5173) and opens the browser. Demo passcodes are written to `.env` (`MITOSIS_PASSCODES`).
+2. Open `http://localhost:5173/compare.html` for the story: press space to step through dead data, a knowledge graph, one agent that bursts, cell division, the living colony, a contradiction caught while reading, and a question being routed. `?auto=1` plays it by itself.
+3. Open `http://localhost:5173`, sign in as `desk` and press space to replay the recorded ingest (or open Under the hood and start a live ingest).
+4. Sign in as `sofie`: her handover lists what she should know about Brouwerij Van Dessel. Ask a question to get the trust card.
+5. Sign in as `jan` to verify the contradiction, then as `vandessel` to see that a client only sees its own data. `E` switches between Stage and Explore mode.
+
+Full run sheet: [demo/DEMO.md](demo/DEMO.md). Pitch video: `demo/video/out/mitosis_pitch.mp4` is not in the repo; see the link in the submission.
 
 ## The problem
 

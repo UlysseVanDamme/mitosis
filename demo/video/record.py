@@ -42,7 +42,7 @@ RAW = OUT / "raw"
 # ----------------------------------------------------------------------------- config
 BASE = os.environ.get("MITOSIS_VIDEO_BASE", "http://localhost:5173")
 COMPARE_PATH = "/compare.html?auto=1"   # dead / connected / alive scene, auto-advancing
-END_PATH = "/compare.html?act=4"        # triptych + "Find it. Understand it. Trust it."
+END_PATH = "/compare.html?act=8"        # triptych + "Find it. Understand it. Trust it."
 COMPARE_KEY_TIMES: list[float] = []     # only for a scene build without ?auto=1: seconds into the shot to press ArrowRight
 APP_PATH = "/"
 SIZE = {"width": 1920, "height": 1080}
