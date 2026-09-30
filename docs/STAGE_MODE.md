@@ -21,3 +21,12 @@ Everything visible in Stage mode serves that sentence. Everything else lives in 
 2. Live demo: frames 1 -> 4.
 3. How: read -> divide -> compare with full context -> tell the owner.
 4. Fit + numbers: trust layer under SD Worx's agents; three eval numbers.
+
+## Explore mode (inspector, not dashboard)
+Rule: the screen shows one thing in detail, the thing you just clicked. Everything else is one click away.
+- Layout: colony canvas (same three colours as Stage) + ONE right panel (no tabs) + one question bar. Top bar: the same three numbers + user menu.
+- Right panel default = "Needs attention": open contradictions ranked by impact, one line each (for Sofie: the handover list for her portfolio client). Click a cell -> panel becomes that specialist (name, owner, what it knows, its contradictions). Click a contradiction -> two sides, verdict, impact, Verify. Ask -> answer card replaces the panel; Back returns.
+- Answer card, three levels: (1) answer + three checks + one warning + "Plain AI said X" struck through; (2) "why" expands the six-question assessment; (3) "sources" expands citations.
+- "Under the hood" drawer, closed by default: split table, event log, System 1/2 gauge, knowledge-debt lens.
+- Removed: toasts, reading ticker, legend (hover only), permanent question chips (shown on input focus), extra stats, plain-RAG column.
+- Two font sizes, three colours, one obvious click target per row.
