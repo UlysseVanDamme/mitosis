@@ -27,7 +27,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .auth import DEMO_USERS, Auth, AuthError, RateLimited, RateLimiter, User
 from .events import STATE_DIR, EventHub, _jsonable
+from .guard import redact as redact_pii
 from .llm import NO_CACHE, make_llm
+from .notify import owner_user
 from .swarm import Swarm, can_see, impact_summary, load_corpus
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -78,6 +80,7 @@ class BaselineReq(_Req):
 class VerifyReq(_Req):  # a body "by" field is ignored: the verifier is the token's user
     conflict_id: str = Field(pattern=CONFLICT_ID)
     winning_claim_id: str = Field(pattern=CLAIM_ID)
+    override: bool = False  # required to overrule the engine's auto resolution (audited)
 
 
 class ReplayReq(_Req):
@@ -238,8 +241,13 @@ class View:
     def split(self, sp: dict, ok_agents: set[str]) -> dict:
         if self.full:
             return sp
-        return {**sp, "children": [c for c in sp.get("children") or [] if c in ok_agents],
-                "rule": self.redact(sp.get("rule")), "reason": self.redact(sp.get("reason"))}
+        kids = [c for c in sp.get("children") or [] if c in ok_agents]
+        rule = sp.get("rule") or ""
+        if isinstance(rule, str) and ":" in rule:  # rebuild from visible children only (no hidden ids/topics)
+            head, _, body = rule.partition(":")
+            parts = [x.strip() for x in body.split(";") if x.strip().rsplit("->", 1)[-1].strip() in kids]
+            rule = head + ": " + "; ".join(parts)
+        return {**sp, "children": kids, "rule": self.redact(rule), "reason": self.redact(sp.get("reason"))}
 
     def state(self, st: dict) -> dict:
         if self.full:
@@ -252,11 +260,14 @@ class View:
         facts = [f for f in st.get("facts", []) if self.fact_ok(f)]
         docs = {i: d for i, d in (st.get("docs") or {}).items() if i in self.visible}
         splits = [self.split(s, ok) for s in st.get("splits", []) if s.get("parent_id") in ok]
-        stats = {**(st.get("stats") or {}), "docs": len(docs), "agents": len(agents), "splits": len(splits),
+        base = {k: v for k, v in (st.get("stats") or {}).items() if k not in ("quarantined", "routing", "budget")}
+        stats = {**base, "docs": len(docs), "agents": len(agents), "splits": len(splits),
                  "leaves": sum(1 for a in agents if a.get("status") == "active"), "conflicts": len(conflicts),
                  "open_conflicts": sum(1 for c in conflicts if c.get("status") == "open"), "verified": len(facts)}
-        return {**st, "agents": agents, "splits": splits, "conflicts": conflicts, "facts": facts,
-                "docs": docs, "stats": stats}
+        out = {**st, "agents": agents, "splits": splits, "conflicts": conflicts, "facts": facts,
+               "docs": docs, "stats": stats}
+        out.pop("budget", None)
+        return out
 
 
 def filter_event(ev: dict, v: View, qowner: Callable[[str], Optional[str]]) -> Optional[dict]:
@@ -270,7 +281,7 @@ def filter_event(ev: dict, v: View, qowner: Callable[[str], Optional[str]]) -> O
     if replayed and not v.full:
         return None  # recordings are unfiltered history: only full-access users get them
     if "query_id" in ev:  # query_* / leaf_answer / baseline_answer: only the creator sees them
-        return ev if replayed or qowner(ev["query_id"]) == v.user.username else None
+        return ev if qowner(ev["query_id"]) == v.user.username else None  # replays too: never other users'
     if t == "snapshot":
         return {**ev, "state": v.state(ev.get("state") or {})}
     if v.full:
@@ -281,7 +292,11 @@ def filter_event(ev: dict, v: View, qowner: Callable[[str], Optional[str]]) -> O
         a = _jsonable(ev.get("agent") or {})
         return {**ev, "agent": v.agent(a)} if v.agent_ok(a) else None
     if t == "split_started":
-        return ev  # agent id and token counts only
+        a = _jsonable(ev.get("agent") or {})
+        aid = ev.get("agent_id") or a.get("agent_id")
+        if a and v.agent_ok(a):
+            return {**ev, "agent": v.agent(a)}
+        return ev if aid == "A0" else None
     if t == "agent_budded":
         a = _jsonable(ev.get("agent") or {})
         if not v.agent_ok(a):
@@ -373,6 +388,15 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         h = request.headers.get("authorization", "")
         return h[7:].strip() if h[:7].lower() == "bearer " else ""
 
+    def client_ip(request: Request) -> str:
+        """Peer address. X-Forwarded-For is attacker-controlled unless MITOSIS_TRUST_PROXY=1: uvicorn
+        rewrites request.client from it by default, so when the header is present and untrusted, every such
+        request shares one bucket (spoofing cannot mint fresh rate-limit keys or poison the audit log)."""
+        host = request.client.host if request.client else "?"
+        if request.headers.get("x-forwarded-for") and os.environ.get("MITOSIS_TRUST_PROXY") != "1":
+            return "untrusted-forwarded"
+        return host
+
     def current_user(request: Request) -> User:
         try:
             return au().verify(_bearer(request))
@@ -395,7 +419,7 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
 
     @api.post("/login")
     async def login(req: LoginReq, request: Request):
-        ip = request.client.host if request.client else "?"
+        ip = client_ip(request)
         try:
             token, user = au().login(req.username, req.passcode, ip)
         except AuthError:
@@ -417,9 +441,10 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         return user.public()
 
     @api.post("/sse-token")
-    async def sse_token(user: User = Depends(current_user)):
+    async def sse_token(request: Request, user: User = Depends(current_user)):
         """Short-lived token for EventSource URLs (EventSource cannot send headers)."""
-        return {"token": au().issue(user, purpose="sse", ttl_s=120), "expires_in": 120}
+        return {"token": au().issue(user, purpose="sse", ttl_s=120, parent=au()._payload(_bearer(request))["jti"]),
+                "expires_in": 120}
 
     @api.get("/users")
     async def users(user: User = Depends(current_user)):
@@ -564,14 +589,15 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
     @api.post("/query")
     async def query(req: QueryReq, user: User = Depends(current_user)):
         query_rl.check(user.username)
-        if req.fresh:
+        question, _ = redact_pii(req.question)  # PII never reaches the LLM or events.jsonl
+        if req.fresh and user.role == "admin":  # cache bypass is an eval tool: admin only
             token = NO_CACHE.set(True)  # the query task copies this context when it is created
             try:
-                qid = sw().start_query(req.question, user.access, username=user.username)
+                qid = sw().start_query(question, user.access, username=user.username)
             finally:
                 NO_CACHE.reset(token)
         else:
-            qid = sw().start_query(req.question, user.access, username=user.username)
+            qid = sw().start_query(question, user.access, username=user.username)
         qowners[qid] = user.username
         return {"query_id": qid}
 
@@ -582,6 +608,12 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
             raise HTTPException(404, "unknown query")
         if q.get("status") == "error":
             q = {**q, "error": "query failed"}
+        if not user.full_access:  # defence in depth: facts only when every source is visible
+            v = View(sw(), user)
+            q = _jsonable(q)
+            q = {**q, "facts": [f for f in q.get("facts") or [] if isinstance(f, dict) and v.fact_ok(f)],
+                 "leaf_answers": [{**la, "facts": [f for f in la.get("facts") or [] if v.fact_ok(f)]}
+                                  for la in q.get("leaf_answers") or [] if isinstance(la, dict)]}
         return q
 
     @api.post("/baseline")
@@ -595,11 +627,14 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
             log.exception("baseline import failed")
             raise HTTPException(503, "baseline not available") from None
         s = sw()
-        pool = list(s.docs.values()) or list(load_corpus(None)[0].values())
+        if not s.docs:
+            raise HTTPException(409, "ingest first")  # never the raw (unredacted, unscreened) corpus
+        pool = [d for d in s.docs.values() if not d.quarantined]  # quarantined docs are never evidence
         docs = [d for d in pool if can_see(user.access, d.access_group)]  # access control before retrieval
-        token = NO_CACHE.set(req.fresh)
+        question, _ = redact_pii(req.question)
+        token = NO_CACHE.set(req.fresh and user.role == "admin")
         try:
-            res = fn(req.question, docs, s.llm)
+            res = fn(question, docs, s.llm)
             if inspect.isawaitable(res):
                 res = await res
         finally:
@@ -622,7 +657,9 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         v = View(s, user)
         # callers may not cite documents they cannot see; unknown strings pass through as free-text sources
         sources = [x[:200] for x in req.sources if x not in s.docs or v.doc_ok(x)]
-        res = _jsonable(await s.trust_check(req.question, req.draft_answer, sources, user.access))
+        question, _ = redact_pii(req.question)
+        draft, _ = redact_pii(req.draft_answer)
+        res = _jsonable(await s.trust_check(question, draft, sources, user.access))
         if isinstance(res, dict) and not v.full:
             if isinstance(res.get("conflicts"), list):
                 res["conflicts"] = [v.conflict(c) for c in res["conflicts"] if isinstance(c, dict) and v.conflict_ok(c)]
@@ -665,6 +702,22 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
             raise HTTPException(400, "claim is not part of this conflict")
         if c.status == "verified":
             raise HTTPException(409, "conflict already verified")
+        a = s.agents.get(c.agent_id)
+        cell_pcs = {s.docs[i].pc for i in (a.doc_ids if a else []) if i in s.docs and s.docs[i].pc}
+        if user.role == "expert":
+            owns = bool(a and a.owner.lower().startswith(user.display_name.lower()))
+            in_pc = bool(cell_pcs) and all(owner_user(None, pc) == user.username for pc in cell_pcs)
+            if not (owns or in_pc):
+                raise HTTPException(403, "not the owner of this cell")
+        w = s.claims.get(req.winning_claim_id)
+        wdoc = s.docs.get(w.doc_id) if w else None
+        cell_client = a.scope.value if a and a.scope.dimension == "client" else None
+        w_client = (w.scope.client if w else None) or (wdoc.client if wdoc else None)
+        if w_client and cell_client and w_client.lower() != cell_client.lower():
+            raise HTTPException(400, "winning claim comes from another client's scope")
+        if c.status == "auto_resolved" and user.role == "expert" and not req.override:
+            raise HTTPException(409, "conflict was auto-resolved: send override=true to overrule it")
+        c_status = c.status
         try:
             fact = s.verify(req.conflict_id, req.winning_claim_id, user.display_name)
         except KeyError:
@@ -672,39 +725,59 @@ def create_app(swarm: Optional[Swarm] = None, auth: Optional[Auth] = None) -> Fa
         except ValueError:
             raise HTTPException(400, "claim is not part of this conflict") from None
         audit("verify", user.username, conflict_id=req.conflict_id, winning_claim_id=req.winning_claim_id,
-              fact_id=fact.fact_id)
+              fact_id=fact.fact_id, override=c_status == "auto_resolved")
         return {"ok": True, "fact": fact.model_dump()}
 
     # ---------------------------------------------------------------- SSE
     @api.get("/events")
     async def events(request: Request, token: Optional[str] = None):
+        # a query-string token (logged by proxies) must be a short-lived SSE token; the header may be either
+        tok = token or _bearer(request)
         try:
-            user = au().verify(token or _bearer(request), purposes=("api", "sse"))
+            user = au().verify(token, purposes=("sse",)) if token else au().verify(tok, purposes=("api", "sse"))
+            pl = au()._payload(tok)
         except AuthError:
             raise HTTPException(401, "authentication required") from None
-        if sse_count.get(user.username, 0) >= MAX_SSE_PER_USER:
+        session = f"{user.username}|{pl.get('par') or pl.get('jti')}"  # cap per login session, not per username
+        if sse_count.get(session, 0) >= MAX_SSE_PER_USER:
             raise RateLimited(5)
         s = sw()
         hub = s.hub
         q = hub.subscribe()
-        sse_count[user.username] = sse_count.get(user.username, 0) + 1
+        sse_count[session] = sse_count.get(session, 0) + 1
+
+        def still_valid() -> bool:  # SSE tokens expire in 120 s; the stream lives as long as the session
+            try:
+                par = pl.get("par")
+                if par:
+                    if par in au()._revoked:
+                        return False
+                    return True
+                au()._payload(tok)
+                return True
+            except AuthError:
+                return False
 
         async def gen():
             try:
                 while True:
-                    if await request.is_disconnected():
+                    if await request.is_disconnected() or not still_valid():
                         break
                     try:
                         ev = await asyncio.wait_for(q.get(), timeout=15)
                     except asyncio.TimeoutError:
                         yield ": keepalive\n\n"
                         continue
+                    if not still_valid():
+                        break
                     out = filter_event(ev, View(s, user), qowners.get)
                     if out is not None:
                         yield f"data: {json.dumps(out)}\n\n"
             finally:
                 hub.unsubscribe(q)
-                sse_count[user.username] = max(0, sse_count.get(user.username, 1) - 1)
+                sse_count[session] = max(0, sse_count.get(session, 1) - 1)
+                if not sse_count[session]:
+                    sse_count.pop(session, None)
 
         return StreamingResponse(gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

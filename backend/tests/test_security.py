@@ -176,7 +176,7 @@ def test_baseline_filters_before_retrieval(env):
 def test_verify_roles_and_verifier_from_token(env):
     c, s, h, _, _ = env
     k = next(iter(s.conflicts.values()))
-    body = {"conflict_id": k.conflict_id, "winning_claim_id": k.claim_ids[0], "by": "Someone Else"}
+    body = {"conflict_id": k.conflict_id, "winning_claim_id": k.claim_ids[0], "by": "Someone Else", "override": True}
     for u in ("sofie", "vandessel", "guest"):
         assert c.post("/api/verify", json=body, headers=h[u]).status_code == 403
     r = c.post("/api/verify", json=body, headers=h["jan"])

@@ -245,8 +245,8 @@ class Swarm:
             elif score >= guard.UNSURE:
                 try:
                     verdict = await self.llm.check_injection(d)
-                except Exception:  # noqa: BLE001
-                    verdict = {"injection": False}
+                except Exception:  # noqa: BLE001  fail closed: unsure + classifier unavailable -> quarantine
+                    verdict = {"injection": True, "reason": "unverified: classifier unavailable; " + "; ".join(why)}
                 if verdict.get("injection"):
                     reason = "Suspected prompt injection (LLM check): " + str(verdict.get("reason") or "; ".join(why))
         if reason:
@@ -440,7 +440,7 @@ class Swarm:
         out = []
         for e in existing:
             for n in new:
-                if e.doc_id == n.doc_id or norm(e.value) == norm(n.value):
+                if e.doc_id == n.doc_id or norm(e.value) == norm(n.value) or not same_unit(e.value, n.value):
                     continue
                 if _similar(e, n) or float(self._claim_vec(e) @ self._claim_vec(n)) >= CLAIM_SIM:
                     out.append(e)
@@ -464,7 +464,7 @@ class Swarm:
             nv = self._claim_vec(n)
             scored = []
             for c in pool:
-                if c.doc_id == n.doc_id or norm(c.value) == norm(n.value):
+                if c.doc_id == n.doc_id or norm(c.value) == norm(n.value) or not same_unit(c.value, n.value):
                     continue
                 sim = float(self._claim_vec(c) @ nv)
                 if _similar(c, n):
@@ -598,7 +598,12 @@ class Swarm:
         for login, client in PORTFOLIO.items():
             if login not in to and self.affects_client(c, client):
                 to[login] = None
+        from .auth import DEMO_USERS
         for login, qid in to.items():
+            u = DEMO_USERS.get(login)
+            if u is None or not self._visible_conflict(c, principal(u.access)) \
+                    or not self._fact_visible(fact, principal(u.access)):
+                continue  # visibility re-checked at send time
             if NAMES.get(login) == by:
                 continue  # the verifier does not notify themselves
             client = PORTFOLIO.get(login)
@@ -850,6 +855,11 @@ class Swarm:
             cur = self.agents[cur].parent_id
         return list(reversed(out))
 
+    def _fact_visible(self, f: VerifiedFact, user) -> bool:
+        """A verified fact is shown only when the caller can see ALL its sources (none quarantined)."""
+        return bool(f.sources) and all(s in self.docs and not self.docs[s].quarantined
+                                       and can_see(user, self.docs[s].access_group) for s in f.sources)
+
     def _visible_conflict(self, c: Conflict, user) -> bool:
         return all(can_see(user, self.docs[self.claims[i].doc_id].access_group)
                    for i in c.claim_ids if i in self.claims and self.claims[i].doc_id in self.docs)
@@ -988,7 +998,8 @@ class Swarm:
             docs = self._visible_docs(a, p)
             vis_ids = {d.doc_id for d in docs}
             claims = [c for c in a.claims if c.doc_id in vis_ids]
-            facts = [f.model_dump() for f in self.facts if f.agent_id == lid or set(f.sources) & vis_ids]
+            facts = [f.model_dump() for f in self.facts
+                     if (f.agent_id == lid or set(f.sources) & vis_ids) and self._fact_visible(f, p)]
             confs = [self.conflict_view(c, p) for c in self.conflicts.values() if c.agent_id == lid and self._visible_conflict(c, p)]
             r = await self.llm.answer_leaf(question, a.scope.description, docs, claims, facts, confs)
             cites = [c for c in dict.fromkeys(r.get("citations") or []) if c in vis_ids]
@@ -1188,7 +1199,8 @@ class Swarm:
                 issues.append(msg)
                 c["draft_issue"] = msg
         issues = list(dict.fromkeys(issues))
-        facts = [f.model_dump() for f in self.facts if set(f.sources) & cited or f.agent_id in leaf_ids]
+        facts = [f.model_dump() for f in self.facts
+                 if (set(f.sources) & cited or f.agent_id in leaf_ids) and self._fact_visible(f, p)]
         citations = [self._citation(i) for i in cited if i in self.docs]
         assessment = self._assess(question, p, citations, conflicts, facts, leaf_ids, draft_issues=issues)
         return {"conflicts": conflicts, "assessment": assessment,
@@ -1308,6 +1320,32 @@ def _named_owner(docs: list[Document], persona: str) -> str:
     name = max(sorted(counts), key=counts.__getitem__)
     role = persona[persona.find("("):] if "(" in persona else ""
     return f"{name} {role}".strip()
+
+
+_DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b|\b\d{1,2}(?:st|nd|rd|th)?\s+"
+                      r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|januari|februari|maart|mei|juni|juli|augustus|"
+                      r"oktober|janvier|février|mars|avril|mai|juin|juillet|août)\w*", re.I)
+_DAYS_RE = re.compile(r"\b(days?|dagen|dag|jours?|weeks?|weken|months?|maanden|mois)\b", re.I)
+
+
+def value_unit(v: str) -> str:
+    """Coarse unit of a claim value: %, eur, days, date, or '' (unknown / plain number / text)."""
+    v = (v or "").lower()
+    if "%" in v:
+        return "%"
+    if "eur" in v or "€" in v:
+        return "eur"
+    if _DATE_RE.search(v):
+        return "date"
+    if _DAYS_RE.search(v):
+        return "days"
+    return ""
+
+
+def same_unit(a: str, b: str) -> bool:
+    """Conflict pre-check: 2% vs 145 EUR (or vs 20 days, vs a date) is not the same fact."""
+    ua, ub = value_unit(a), value_unit(b)
+    return not ua or not ub or ua == ub
 
 
 def _unit(v: str) -> str:

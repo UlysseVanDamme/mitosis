@@ -143,10 +143,12 @@ async def baseline_answer(question: str, docs: Iterable[Any], llm: Any) -> dict:
     retrieved = list(dict.fromkeys(c["doc_id"] for c in top))
     if not top:
         return {"answer": "No documents indexed.", "retrieved": []}
-    passages = "\n\n".join(f"{c['header']}\n{c['text']}" for c in top)
+    from .guard import wrap_doc
+    passages = "\n\n".join(f"{c['header']}\n{wrap_doc(c['doc_id'], c['text'])}" for c in top)
     user = f"Passages:\n{passages}\n\nQuestion: {question}\nAnswer:"
     try:
-        answer = await _call_llm(llm, SYSTEM, user)
+        from .guard import DATA_RULE
+        answer = await _call_llm(llm, SYSTEM + "\n" + DATA_RULE, user)
     except Exception as e:  # never break the demo on the baseline column
         answer = f"(baseline LLM failed: {e})"
     return {"answer": answer.strip(), "retrieved": retrieved}
