@@ -181,13 +181,13 @@ function drawLiving(x: number, y: number, r: number, hue: number, opts: { a?: nu
   ctx.restore();
 }
 
-function drawAgent(x: number, y: number, a = 1, r = 17, label = true) {
+function drawAgent(x: number, y: number, a = 1, r = 24, label = true) {
   if (a <= 0) return;
   const wx = x + 3 * Math.sin(now * 2.3), wy = y + 3 * Math.cos(now * 1.9);
   drawLiving(wx, wy, r, AGENT_HUE, { a, phase: 1.3 });
   if (label) {
     ctx.save(); ctx.globalAlpha *= a;
-    text('agent', wx, wy + r + 17, 16, oklch(0.86, 0.13, AGENT_HUE), 'center', 600, MONO, true);
+    text('agent', wx, wy + r + 18, 18, oklch(0.86, 0.13, AGENT_HUE), 'center', 600, MONO, true);
     ctx.restore();
   }
 }
@@ -422,10 +422,10 @@ function act1() {
     if (s < 0) return;
     const c = byId(id);
     ctx.beginPath(); ctx.arc(c.x, c.y, c.r + 5, 0, 7);
-    ctx.strokeStyle = oklch(0.86, 0.12, AGENT_HUE, s < 0.5 ? 1 : 0.5); ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = GREY(0.8, s < 0.5 ? 0.9 : 0.45); ctx.lineWidth = 2; ctx.stroke();
     if (s < 0.6) {
       ctx.beginPath(); ctx.arc(c.x, c.y, c.r + 5 + s * 40, 0, 7);
-      ctx.strokeStyle = oklch(0.86, 0.12, AGENT_HUE, 1 - s / 0.6); ctx.stroke();
+      ctx.strokeStyle = GREY(0.85, 1 - s / 0.6); ctx.stroke();
     }
   });
   const ap = agentAct1();
@@ -607,7 +607,7 @@ function drawColony(T: number, Tf: number, z: number, startX: number, o: ColonyO
       if (a <= 0) return;
       const [x, y] = pos[first.id];
       ctx.save(); ctx.globalAlpha *= a;
-      wtext(`divided ${lab}`, x, y - endR(first) * 1.3 - 24 * px, 22, TEXT(0.95), z, 600, MONO);
+      wtext(`divided ${lab}`, x, y - endR(first) * 3.3 - 40 * px, 22, TEXT(0.95), z, 600, MONO);
       ctx.restore();
     });
   }
@@ -717,7 +717,8 @@ function act4() {
   if (cf > 0) {
     ctx.save();
     ctx.beginPath(); ctx.moveTo(F.x, F.y); ctx.lineTo(N.x, N.y);
-    ctx.strokeStyle = verified > 0 ? GREEN(0.8 * verified) : RED(0.7 * cf); ctx.lineWidth = 3; ctx.stroke();
+    ctx.strokeStyle = oklch(0.16, 0.03, 255, 0.85 * cf); ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.strokeStyle = verified > 0 ? GREEN(verified) : RED(cf); ctx.lineWidth = 5; ctx.stroke();
     if (verified < 1) {
       for (let k = 0; k < 3; k++) {
         const p = ((now * 0.8 + k / 3) % 1) * 0.5;
@@ -730,7 +731,7 @@ function act4() {
       [F, N].forEach((c, i) => {
         const pr = (now * 1.2 + i * 0.5) % 1;
         ctx.beginPath(); ctx.arc(c.x, c.y, 16 + pr * 26, 0, 7);
-        ctx.strokeStyle = RED(cf * (1 - pr) * (1 - verified) * 0.9); ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.strokeStyle = RED(cf * (1 - pr) * (1 - verified)); ctx.lineWidth = 5; ctx.stroke();
       });
     }
     ctx.restore();
@@ -758,8 +759,8 @@ function act4() {
     ctx.save(); ctx.globalAlpha *= va;
     const mx = (F.x + N.x) / 2, my = Math.min(F.y, N.y) - 62;
     const str = 'final replaces forecast';
-    pill(mx, my, measure(str, 18, 600, MONO) + 30, 36, oklch(0.2, 0.03, 255, 0.94), verified > 0 ? GREEN(0.8) : RED(0.8));
-    text(str, mx, my + 1, 18, TEXT(), 'center', 600, MONO);
+    pill(mx, my, measure(str, 22, 700, MONO) + 36, 44, verified > 0 ? oklch(0.22, 0.05, 150, 0.96) : oklch(0.24, 0.08, 25, 0.96), verified > 0 ? GREEN() : RED(), 2.5);
+    text(str, mx, my + 1, 22, TEXT(), 'center', 700, MONO);
     ctx.restore();
   }
   ctx.restore();
