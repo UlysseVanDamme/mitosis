@@ -128,8 +128,7 @@ def synth_corpus(n=100, seed=7):
 
 
 async def test_budget_yields_interesting_swarm(tmp_path):
-    from mitosis.swarm import DEFAULT_BUDGET
-    s = make_swarm(tmp_path, budget=DEFAULT_BUDGET)
+    s = make_swarm(tmp_path, budget=7000)  # synthetic docs are ~3x longer than the demo corpus
     await s.ingest_now(synth_corpus())
     n = len(s.agents)
     print("agents", n, "splits", len(s.splits), "dims", [x.dimension for x in s.splits])
@@ -173,3 +172,13 @@ def test_api_endpoints(tmp_path, monkeypatch):
         # replay the previous run (rotated to events.prev.jsonl)
         rp = client.post("/api/replay", json={"file": str(tmp_path / "events.prev.jsonl"), "speed": 1000})
         assert rp.status_code == 200 and rp.json()["events"] > 10
+
+
+async def test_default_budget_on_demo_corpus(tmp_path):
+    from mitosis.swarm import DEFAULT_BUDGET, load_corpus
+    docs, order = load_corpus(None)
+    if not docs:
+        return
+    s = make_swarm(tmp_path, budget=DEFAULT_BUDGET)
+    await s.ingest_now([docs[i] for i in order])
+    assert 12 <= len(s.agents) <= 40
