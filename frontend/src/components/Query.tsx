@@ -89,20 +89,25 @@ export const AnswerSheet = forwardRef<HTMLDivElement>(function AnswerSheet(_, re
           ) : (
             <div className="answer-grid">
               <div className="answer-main">
-                <p className="answer">{renderBold(a.answer).map((p) => (p.b ? <b key={p.i}>{p.t}</b> : <span key={p.i}>{p.t}</span>))}</p>
-                {a.conflicts.length > 0 && (
-                  <div className="ans-conflicts">
-                    {a.conflicts.map((c) => <ConflictCard key={c.conflict_id} c={s.conflicts.get(c.conflict_id) ?? c} compact />)}
-                  </div>
-                )}
+                <AnswerText text={a.answer} cites={a.citations.map((c) => c.doc_id)} />
+                {a.conflicts.length > 0 && (() => {
+                  const cs = rankConflicts(a.conflicts.map((c) => s.conflicts.get(c.conflict_id) ?? c));
+                  return (
+                    <div className="ans-conflicts">
+                      <div className="col-label conf-label">Caught while reading <span>{cs.length} conflict{cs.length === 1 ? '' : 's'} behind this answer</span></div>
+                      {cs.slice(0, 2).map((c) => <ConflictCard key={c.conflict_id} c={c} compact />)}
+                      {cs.length > 2 && <div className="more dim">+{cs.length - 2} more in the Conflicts tab</div>}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="answer-side">
                 <Gauge value={a.trust} />
                 {a.owners.length > 0 && <div className="owners">Ask <b>{[...new Set(a.owners)].join(', ')}</b></div>}
                 <ol className="cites">
-                  {a.citations.map((c) => (
+                  {a.citations.map((c, i) => (
                     <li key={c.doc_id}>
-                      <i style={{ background: srcColor(s.docs.get(c.doc_id)?.source_type ?? '') }} />
+                      <i className="cite-n" style={{ borderColor: srcColor(s.docs.get(c.doc_id)?.source_type ?? '') }}>{i + 1}</i>
                       <div>
                         {c.url ? <a href={c.url} target="_blank" rel="noreferrer">{c.title}</a> : <span>{c.title}</span>}
                         <span className="mono dim">{c.source}{c.date ? ` · ${c.date}` : ''}</span>
@@ -118,12 +123,28 @@ export const AnswerSheet = forwardRef<HTMLDivElement>(function AnswerSheet(_, re
           <div className="col-label">Plain RAG <span>top chunks, one call</span></div>
           {q.baseline ? (
             <>
-              <p className="answer rag">{q.baseline.answer}</p>
+              <p className="answer rag">{stripCites(q.baseline.answer)}</p>
               <div className="rag-meta">
                 <span className="tag warn-tag">no conflict check</span>
                 <span className="tag">no owner</span>
+                <span className="tag">no trust score</span>
               </div>
-              <div className="retrieved mono dim">retrieved: {q.baseline.retrieved.join(', ') || 'n/a'}</div>
+              <div className="col-label sub">It read {q.baseline.retrieved.length} chunks</div>
+              <ul className="rag-docs">
+                {q.baseline.retrieved.map((id) => {
+                  const d = s.docs.get(id);
+                  const weak = d && ['forecast', 'slack', 'ticket', 'email'].includes(d.source_type);
+                  return (
+                    <li key={id} className={weak ? 'weak' : ''}>
+                      <i style={{ background: srcColor(d?.source_type ?? '') }} />
+                      <div>
+                        <span>{d?.title ?? id}</span>
+                        <span className="mono dim">{d ? `${d.source_type}${d.pc ? ` · ${d.pc}` : ''}${d.date ? ` · ${d.date}` : ''}` : ''}{weak ? ' · unchecked' : ''}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             </>
           ) : <div className="thinking"><i /><i /><i /> retrieving</div>}
         </div>
@@ -179,4 +200,43 @@ export function Drawer() {
       </div>
     </div>
   );
+}
+
+const CITE_RE = /\s*\[([A-Za-z0-9_\-.:]+(?:\s*,\s*[A-Za-z0-9_\-.:]+)*)\]/g;
+
+function stripCites(t: string) {
+  return t.replace(CITE_RE, '').replace(/^\(fake\)\s*/, '');
+}
+
+/** First sentence becomes the headline; inline [doc_id] citations become numbered marks. */
+function AnswerText({ text, cites }: { text: string; cites: string[] }) {
+  const clean = text.replace(/^\(fake\)\s*/, '').trim();
+  const m = clean.match(/^(.+?[.!?])(\s+(?=[A-Z[(])|$)/s);
+  const head = m ? m[1] : clean;
+  const rest = m ? clean.slice(m[0].length) : '';
+  const render = (t: string) => {
+    const out: React.ReactNode[] = [];
+    let last = 0, k = 0;
+    for (const mm of t.matchAll(CITE_RE)) {
+      out.push(...renderBold(t.slice(last, mm.index)).map((p) => (p.b ? <b key={k++}>{p.t}</b> : <span key={k++}>{p.t}</span>)));
+      const ids = mm[1].split(/\s*,\s*/);
+      const nums = [...new Set(ids.map((id) => cites.indexOf(id) + 1).filter((n) => n > 0))];
+      if (nums.length) out.push(<sup key={k++} className="cn">{nums.join(',')}</sup>);
+      last = (mm.index ?? 0) + mm[0].length;
+    }
+    out.push(...renderBold(t.slice(last)).map((p) => (p.b ? <b key={k++}>{p.t}</b> : <span key={k++}>{p.t}</span>)));
+    return out;
+  };
+  return (
+    <div className="answer-text">
+      <p className="answer-head">{render(head)}</p>
+      {rest && <p className="answer">{render(rest)}</p>}
+    </div>
+  );
+}
+
+const KIND_RANK: Record<string, number> = { forecast_vs_final: 0, true_contradiction: 1, temporal_supersession: 2, scope_difference: 3 };
+function rankConflicts<T extends { kind: string; status: string }>(cs: T[]): T[] {
+  const st = (x: string) => (x === 'verified' ? 0 : x === 'open' ? 1 : 2);
+  return [...cs].sort((a, b) => st(a.status) - st(b.status) || (KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9));
 }
