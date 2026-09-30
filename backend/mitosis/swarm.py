@@ -527,13 +527,15 @@ class Swarm:
         rule = (c.kind == "forecast_vs_final" or (c.kind == "scope_difference" and client_cao)
                 or (c.kind == "true_contradiction" and types & {"slack", "teams"} and types & {"policy", "official", "law"})
                 or len(langs) > 1)
-        if not rule:
+        if not rule or not _comparable([s["value"] for s in c.sides]):
             return False
         key = frozenset((norm(self.claims[i].subject), norm(self.claims[i].attribute)) for i in c.claim_ids)
         others = [o for o in self.conflicts.values() if o.hero and o.conflict_id != c.conflict_id]
         if len(others) >= HERO_MAX:
             return False
         for o in others:
+            if o.kind == c.kind and o.agent_id == c.agent_id:  # one spotlight per story beat per cell
+                return False
             if key & frozenset((norm(self.claims[i].subject), norm(self.claims[i].attribute)) for i in o.claim_ids) \
                     and o.kind == c.kind:
                 return False
@@ -566,7 +568,7 @@ class Swarm:
         affected: dict[str, dict] = {}
         for lo in losers:
             lnum = _num(lo.value)
-            if not re.search(r"\d", lnum):
+            if not re.search(r"\d", lnum) or not _comparable([lo.value, w.value]):
                 continue
             fam = {norm(lo.attribute), norm(w.attribute)}
             for d in self.docs.values():
@@ -1198,6 +1200,28 @@ def doc_owner(d: Document) -> Optional[str]:
 
 def _row(verdict: str, level: str, evidence: list[str]) -> dict:
     return {"verdict": verdict, "level": level, "evidence": evidence}
+
+
+_VAGUE_RE = re.compile(r"\b(above|below|over|under|around|about|approx\w*|more than|less than|at least|up to|"
+                       r"boven|onder|ongeveer|rond|circa|environ|plus de|moins de)\b|[~<>≈±]", re.I)
+
+
+def _comparable(values: list[str]) -> bool:
+    """Figures a person would call the same fact: same unit, exact (not 'above 2%'), and close in size
+    (2.13% vs 2.21%, not 2.21% vs 0.21859% which is a different quantity). Non-numeric values pass."""
+    nums = []
+    for v in values:
+        m = re.search(r"\d+(?:[.,]\d+)?", v or "")
+        if not m:
+            continue
+        if _VAGUE_RE.search(v or ""):
+            return False
+        nums.append(float(m.group(0).replace(",", ".")))
+    if len({_unit(v) for v in values if re.search(r"\d", v or "")}) > 1:
+        return False
+    if len(nums) >= 2 and min(nums) > 0 and max(nums) / min(nums) > 1.5:
+        return False
+    return True
 
 
 def _num(v: str) -> str:
