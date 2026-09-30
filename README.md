@@ -4,7 +4,17 @@
 
 Built for the Tectonic hackathon, SD Worx track: *Unlock the Knowledge Within. Find it. Understand it. Trust it.*
 
-![Mitosis answer card: the six-question trust card next to the plain RAG answer](docs/screenshots/1440-05-answer.jpg)
+![Mitosis answering the Van Dessel indexation question: 2.21% from 1 February, verified by the PC 200 owner, next to the plain RAG answer](docs/screenshots/hero.png)
+
+| | Mitosis | Plain RAG |
+|---|---|---|
+| Planted contradictions surfaced | **19/21** | 0 |
+| Prompt-injection leaks | **0** | 1 |
+| Routing decisions made without an LLM call | **85%** | n/a |
+| Questions where the sources contradict each other (G03, G06, G13, G17) | **4/4** | 0/4 |
+| Hand-labelled conflict precision (sample of 20) | **19/20** | n/a |
+
+Numbers from `eval/results.md`. Overall answer accuracy is in [Results](#results).
 
 ## The problem
 
@@ -14,7 +24,17 @@ The brief asks six questions: **What is reliable? What is current? What applies 
 
 Plain retrieval (RAG) cannot answer any of them. It fetches the four chunks that share the most words with the question and blends them into one confident paragraph. A forecast and a final figure look equally relevant. So do a Dutch internal note and the French official release that overrules it.
 
-Our demo follows exactly that story. Sofie, a payroll consultant, takes over the Brouwerij Van Dessel portfolio from Jan Peeters on 1 October 2026. Els Van Dessel (HR) asks how many of the 12 days of temporary unemployment in March count for the December year-end bonus. The corpus holds Jan's handover note from last week (5 days), an ownerless 2019 procedure from the shared drive (none), the Dutch subsidiary's 13th-month rules (a different country) and a Teams message from a colleague (all 12). The right answer is 5.
+Our demo follows that story. Sofie, a payroll consultant, takes over the Brouwerij Van Dessel portfolio from Jan Peeters. The client asks which index applies in January. She finds a forecast of 2.13% (Pro-Pay, October), a final figure of 2.21% (Agoria, December), a Slack message saying "2.21 across the board" and a 2019 company agreement that moves Van Dessel's indexation to 1 February, on the base salary without the brewery premium. Plain retrieval picks one of these. Mitosis caught the forecast against the final figure while it was reading, asked Jan to confirm, and answers: **2.21% from 1 February, on the base without the brouwerijpremie, verified by Jan Peeters.**
+
+A second planted case uses the same client: how many of 12 days of temporary unemployment count for the year-end bonus. A handover note says 5, an ownerless 2019 procedure says none, a Teams message says all 12, and the Dutch subsidiary follows other rules. The right answer is 5.
+
+## Dead, connected, alive
+
+![Act 4 of the demo: the same question against dead, connected and living knowledge](docs/screenshots/compare-act4.png)
+
+- **Dead:** documents in a shared drive. You search, you get files, you work out the rest.
+- **Connected:** RAG or a knowledge graph. The documents are linked and an assistant blends them into one answer, but nobody notices that two of them disagree.
+- **Alive:** Mitosis. The knowledge checks itself while it grows, knows who owns each part, and asks that person when two sources disagree. The answer comes with the evidence and a name.
 
 ## How it works
 
@@ -75,15 +95,21 @@ Real run, 30 Sep 2026: `MITOSIS_PROVIDER=claude-cli` (Sonnet + Haiku via `claude
 
 | Metric | Mitosis | Plain RAG |
 |---|---|---|
-| Answer accuracy (golden set, figure + keyword match) | 14/18 (78%) | 11/18 (61%) |
 | Planted conflicts surfaced (21 planted) | 19/21 (90%), 6 of them across agents | 0 (no conflict detection) |
-| Access-control leaks | 0 | 0 |
 | Prompt-injection leaks | 0 (injected Slack message quarantined, never cited) | 1 |
+| Contradiction questions (G03, G06, G13, G17) | 4/4 | 0/4 |
+| Conflict precision, hand-labelled sample of 20 unplanted conflicts | 19/20 | n/a |
+| Answer accuracy (golden set, figure + keyword match) | 14/18 (78%) | 11/18 (61%) |
+| Access-control leaks | 0 | 0 |
 | PII in answers | 0 | 0 |
 | Routes decided without an LLM call | 85% (rule 18, System 1 60, System 2 14) | n/a |
 | Answer latency, cold (first run, median) | 13.5 s (range 11.7 to 31.8 s) | n/a |
 
 The eval ran against the state of the recorded demo run, so its answers came from the LLM cache (median 20 ms). The cold latency above is measured on the first real run from the event log. The four Mitosis misses: two questions have no answer in the corpus and Mitosis says so without the expected wording (G10, G15), one is a refusal worded differently from the expected answer (G16, no leak), and one missed a keyword (G04).
+
+The accuracy gap is 3 questions out of 18, which is too small to lean on. Our claim is narrower: when sources contradict each other, Mitosis knows before anyone asks. On the four questions built on a contradiction, plain RAG misses all four; on G13 it repeats the Teams message that all 12 days count.
+
+Conflict precision: `eval/precision.py` samples 20 detected conflicts that were not planted (from a later snapshot with 44 conflicts) and we labelled them by hand in `eval/precision_sample.md`. 10 are real disagreements, 9 are scope differences worth flagging, 1 is false. The weak spot is duplication: 14 of the 20 restate a planted conflict through another pair of documents, and the Van Dessel company agreement alone appears 8 times. The conflicts need merging per topic before they reach an owner.
 
 Full per-question results: `eval/results.md`.
 
@@ -96,6 +122,7 @@ Aikido's AI code audit is part of the score, and payroll knowledge is sensitive,
 - Only admins can ingest, reset or replay; only owners and experts can verify, and the verifier's name comes from the token.
 - Prompt-injection quarantine and PII redaction at ingest (both shown in the demo).
 - Passcodes come from the environment and are never in the repo; CI runs gitleaks over the full history.
+- Aikido scan before and after the fixes: `docs/aikido/before.png`, `docs/aikido/after.png`.
 
 ## Run it
 
@@ -138,7 +165,16 @@ Python 3.12, FastAPI, pydantic, uv, numpy (local embeddings, no model download),
 - **Evaluation size.** 18 golden questions and 21 planted conflicts on 102 documents is enough to compare approaches, not to claim production accuracy.
 - **Persistence and scale.** State lives in memory with a JSON snapshot; one ingest lock serialises routing. Fine for a demo, not for a real payroll desk.
 - **Identity.** Demo users with passcodes, not SSO.
+- **Duplicate conflicts.** The same disagreement is often reported once per document pair. Merging them per topic is next.
+- **Trust score calibration.** The 0-100 score is computed in code but not yet calibrated against labelled answers.
+
+## More
+
+- Sales story and buyer: [docs/SALES.md](docs/SALES.md)
+- Pitch deck: [docs/deck/](docs/deck/)
+- Security and threat model: [SECURITY.md](SECURITY.md)
+- Submission text: [docs/SUBMISSION.md](docs/SUBMISSION.md)
 
 ## Team
 
-_To fill in: names and roles._
+Ulysse Van Damme + team.
