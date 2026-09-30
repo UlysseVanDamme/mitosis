@@ -118,7 +118,7 @@ const TAGS: Tag[] = [
   { act: 1, at: 5, text: 'One confident answer, no owner', x: 1300, y: 190, targets: [[1300, 150]], delay: 0.5 },
   { act: 2, at: 1, text: 'Linked, never compared', x: 850, y: 420, targets: [edgeMid(edges.findIndex(([a, b]) => a + b === 1 && a * b === 0))] },
   { act: 2, at: 2, text: 'Not in graph until rebuild', x: 1400, y: 175, targets: [[NEWDOC.x2, NEWDOC.y2]], delay: 1.2 },
-  { act: 2, at: 3, text: 'Many hops to search · 14', x: 1120, y: 120, targets: [], delay: 3 },
+  { act: 2, at: 3, text: 'Many hops to search · 14', x: 1200, y: 120, targets: [], delay: 3 },
   { act: 2, at: 4, text: 'Someone must maintain it', x: edgeMid(brokenEdge)[0] + 60, y: edgeMid(brokenEdge)[1] + 120, targets: [edgeMid(brokenEdge)], delay: 0.6 },
   { act: 3, at: 2, text: 'Caught while reading', x: 575, y: 205, targets: ['f213', 'f221'] },
   { act: 3, at: 3, text: 'Knows the context', x: 1010, y: 505, targets: ['nl'] },
@@ -161,6 +161,7 @@ function drawTags() {
 
 // ---------------------------------------------------------------- cells
 let alive = 0; // 0 = dead grey, 1 = alive colour
+let labelAlpha = 1; // labels hide while cells merge
 function cellColor(c: Cell, l: number, a = 1) {
   const [h, ch] = SOURCE_HUE[c.src] ?? [210, 0.05];
   return oklch(lerp(0.42, l, alive), lerp(0.012, ch, alive), h, a);
@@ -191,6 +192,7 @@ function drawCell(c: Cell, opts: { labels?: boolean; dim?: number } = {}) {
   // nucleus
   ctx.beginPath(); ctx.arc(x + r * 0.12 * Math.sin(now + c.phase) * alive, y, r * 0.38, 0, 7);
   ctx.fillStyle = cellColor(c, 0.92, 0.55 + 0.4 * alive); ctx.fill();
+  ctx.globalAlpha = dim * clamp(labelAlpha);
   if (opts.labels !== false && c.lines.length) {
     c.lines.forEach((ln, i) =>
       text(ln, x, y + r + 16 + i * 20, i === 0 ? 17 : 15, i === 0 ? TEXT(lerp(0.62, 0.95, alive)) : TEXT2(lerp(0.5, 0.75, alive)), 'center', i === 0 ? 600 : 500));
@@ -323,13 +325,13 @@ function drawEdges(alpha: number, highlight?: Set<number>) {
       return;
     }
     ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
-    ctx.strokeStyle = highlight?.has(e) ? TEXT2(0.55 * alpha) : GREY(0.5, 0.55 * alpha);
-    ctx.lineWidth = highlight?.has(e) ? 2 : 1.3; ctx.stroke();
+    ctx.strokeStyle = highlight?.has(e) ? TEXT(0.8 * alpha) : GREY(0.5, 0.55 * alpha);
+    ctx.lineWidth = highlight?.has(e) ? 2.5 : 1.3; ctx.stroke();
   });
 }
 
 function act1() {
-  alive = 0;
+  alive = 0; labelAlpha = 1;
   cells.forEach((c) => { c.px = c.x; c.py = c.y; });
   drawClock(li === 1);
   const qa = ph(2, 0, 0.4);
@@ -370,7 +372,7 @@ function act1() {
 }
 
 function act2() {
-  alive = 0;
+  alive = 0; labelAlpha = 1;
   cells.forEach((c) => { c.px = c.x; c.py = c.y; });
   // edges draw in on the first step
   const ea = ph(0, 0.1, 1.2);
@@ -421,7 +423,8 @@ function act3() {
   // edges of the old graph dissolve
   drawEdges(1 - alive);
   // one living cell, then specialists
-  drawMembrane(CX, CY, 290 * gather * (1 - divide * 0.6), 178, gather * (1 - divide));
+  drawMembrane(CX, CY, 330 * gather * (1 - divide * 0.6), 178, gather * (1 - divide));
+  labelAlpha = 1 - gather + divide;
   (Object.keys(GROUPS) as Group[]).forEach((k) => {
     const g = GROUPS[k];
     const x = lerp(CX, g.x, divide), y = lerp(CY, g.y, divide), r = lerp(90, g.r, divide);
@@ -430,7 +433,7 @@ function act3() {
   });
   cells.forEach((c) => {
     const g = GROUPS[c.group];
-    const gx = CX + (g.x - CX) * 0.2 + (c.x3 - g.x) * 0.55, gy = CY + (g.y - CY) * 0.2 + (c.y3 - g.y) * 0.55;
+    const gx = CX + (g.x - CX) * 0.3 + (c.x3 - g.x) * 0.75, gy = CY + (g.y - CY) * 0.3 + (c.y3 - g.y) * 0.75;
     const wob = 4 * alive;
     const x1 = lerp(c.x, gx, gather), y1 = lerp(c.y, gy, gather);
     c.px = lerp(x1, c.x3, divide) + wob * Math.sin(now * 0.7 + c.phase);
@@ -545,6 +548,7 @@ const COLUMNS = [
 ];
 
 function act4() {
+  labelAlpha = 1;
   COLUMNS.forEach((col, i) => {
     const bx = 70 + i * 505, bw = 450;
     const a = ph(0, i * 0.35, 0.7);

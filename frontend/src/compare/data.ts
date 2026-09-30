@@ -62,6 +62,7 @@ export function buildCells(): Cell[] {
   const boxes1 = cells.map((c) => labelBox(c.x, c.y, c.r, c.lines));
   const boxes3 = cells.map((c) => labelBox(c.x3, c.y3, c.r, c.lines));
   // reserved spots: question pill, clock, answer, new document, captions
+  boxes3.push({ x0: 440, x1: 710, y0: 290, y1: 410 }); // conflict corridor + verdict
   boxes1.push({ x0: 380, x1: 1520, y0: 60, y1: 205 }, { x0: 1320, x1: 1600, y0: 180, y1: 330 },
     { x0: 60, x1: 360, y0: 380, y1: 460 }, { x0: 960, x1: 1220, y0: 740, y1: 900 });
   const inside = (b: { x0: number; x1: number; y0: number; y1: number }, x: number, y: number, pad: number) =>
