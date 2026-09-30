@@ -2,30 +2,34 @@
 
 ## Links
 
-- Repository: _TBD (github.com/.../mitosis, public before judging)_
-- Demo video (under 3:00): _TBD_
+- Repository: https://github.com/UlysseVanDamme/mitosis
+- Demo video (under 3:00): TBD
 - README: `README.md` (what it is, how to run it, what is unfinished)
 
 ## Short description (50 words)
 
-Mitosis turns scattered payroll knowledge into answers you can check. One agent reads everything and divides like a cell as it learns, so each specialist notices when sources disagree. Every answer shows what is reliable, current and applicable, where the gaps are, who knows, and whether to trust it.
+Sofie inherits a payroll client. Which January index applies? One source says 2.13%, another 2.21%, and a company agreement says 1 February. Mitosis reads everything, divides into specialist agents, catches the disagreement while reading and asks the owner. Sofie gets 2.21% from 1 February, with the evidence and Jan's name.
 
 ## Description (120 words)
 
-A payroll consultant inherits a client portfolio. Her search finds a recent handover note, an old procedure nobody owns, a rule for another country and a Teams message that contradicts policy. Plain retrieval blends them into one confident, wrong answer.
+Sofie, a payroll consultant, takes over Brouwerij Van Dessel. The client asks which index applies in January. She finds a forecast of 2.13%, a final figure of 2.21%, a Slack message saying 2.21 applies to everyone, and a company agreement that moves the index to 1 February. Plain retrieval blends these into one confident answer.
 
-Mitosis starts with one agent that reads every document. When its knowledge outgrows its context budget, it divides along a scope like joint committee, country or client, and records why. Each specialist keeps its whole domain in mind, so contradictions are caught while reading. Answers come with the SD Worx brief's six questions answered from evidence, a named owner who verifies, prompt-injection quarantine, PII redaction and access control before retrieval. A trust-check API makes it the trust layer under existing assistants.
+Mitosis starts as one agent that reads every document. When its knowledge outgrows its context, it divides by joint committee, country or client and writes down why. Each specialist compares new documents with everything it knows, so contradictions surface during reading and go to a named owner. Sofie's answer shows what is reliable, current and applicable, where the gaps are, and who verified it.
 
 ## Aikido security audit
 
-- Before fixes: `docs/aikido/before.png` _(screenshot TBD)_
-- After fixes: `docs/aikido/after.png` _(screenshot TBD)_
+- Before fixes: `docs/aikido/before.png`
+- After fixes: `docs/aikido/after.png`
 - What we fixed and why: `SECURITY.md`
 
-## Eval (fill in from `eval/results.md`)
+## Eval (from `eval/results.md`)
 
 | Metric | Mitosis | Plain RAG |
 |---|---|---|
-| Answer accuracy (18 golden questions) | _TBD_ | _TBD_ |
-| Planted conflicts surfaced (21) | _TBD_ | 0 |
-| Access-control leaks | _TBD_ | _TBD_ |
+| Planted conflicts surfaced (21) | 19/21 | 0 |
+| Prompt-injection leaks | 0 | 1 |
+| Contradiction questions (G03, G06, G13, G17) | 4/4 | 0/4 |
+| Conflict precision, hand-labelled sample of 20 | 19/20 | n/a |
+| Answer accuracy (18 golden questions) | 14/18 (78%) | 11/18 (61%) |
+| Access-control leaks | 0 | 0 |
+| Routes decided without an LLM call | 85% | n/a |
