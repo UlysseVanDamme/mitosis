@@ -49,3 +49,9 @@ Aikido's AI Code Audit reasons about business logic flaws, IDOR, authentication 
 - D1 GitHub repo `mitosis` private -> public at the end.
 - D2 Video UNDER 3:00: `docs/VIDEO_SCRIPT.md` timed to 2:50 (hook 0:00-0:15, moment of doubt 0:15-0:40, swarm + splits 0:40-1:20, six-question answer card + verify 1:20-2:10, System 1/2 + eval numbers 2:10-2:30, security + SD Worx fit + close 2:30-2:50), shot list; optional ElevenLabs voice-over (hackathon credits); screen capture via ffmpeg driven by replay for deterministic timing; team records voice-over.
 - D3 `docs/SUBMISSION.md`: 100-word and 50-word descriptions, repo link, video link placeholder.
+
+## Wave 3 (after wave 2 merge): proactive surfacing with full context (core of the pitch)
+"You don't search for conflicts. The swarm finds them while it reads, with the full context of every domain, and tells the right person before someone acts on the wrong number."
+- X1 Cross-agent check (makes "full context" true after splits): for every new claim, System 1 similarity over a global claim index pulls similar claims from ALL leaves into the conflict check, not only the receiving leaf. Event field `cross_agent: true` + UI arc between the two cells.
+- X2 Owner inbox: every open conflict is pushed to the owner of the holding cell; cell badge "3 to decide"; GET /api/inbox for the logged-in expert; toast "New conflict for Jan Peeters".
+- X3 Impact detection: when a conflict is resolved (auto or verified), find every claim/doc still relying on the losing value (client configs, open tickets, emails) and emit `impact_detected {conflict_id, losing_value, affected: [{doc_id, title, client, why}]}`. Planted case: Softwarehuis Delta config manual override 2.13% vs final 2.21%. UI alert card: "Forecast superseded -> 1 client config and 2 open tickets still use 2.13% -> fix before the payroll run".
