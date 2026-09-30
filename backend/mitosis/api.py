@@ -68,6 +68,14 @@ def create_app(swarm: Optional[Swarm] = None) -> FastAPI:
         s = sw()
         return {"ok": True, "llm": "fake" if getattr(s.llm, "is_fake", False) else "anthropic", "budget": s.budget, "users": USERS}
 
+    @api.get("/golden")
+    async def golden():
+        from .swarm import CORPUS_DIR
+        p = CORPUS_DIR / "golden_questions.json"
+        if not p.exists():
+            return []
+        return json.loads(p.read_text())
+
     @api.get("/state")
     async def state():
         return sw().state()

@@ -208,6 +208,13 @@ class FakeLLM:
         for lf in leaves:
             bag = words(lf.get("profile", ""))
             s = sum(1 for w in bag if w in q) / (1 + len(bag) ** 0.5) + (2.0 if q & set(words(lf.get("scope", ""))) else 0)
+            prof = lf.get("profile", "").lower()
+            for pc in re.findall(r"pc \d+(?:\.\d+)?", question.lower()):
+                if pc in prof:
+                    s += 3.0
+            for kw in ("brouwerij van dessel", "softwarehuis delta", "verhaeghe", "mertens", "bouwgroep maes", "vlaskouter", "gouden lepel"):
+                if kw in question.lower() and kw in prof:
+                    s += 3.0
             scored.append((s, lf["agent_id"]))
         scored.sort(key=lambda t: -t[0])
         if not scored:

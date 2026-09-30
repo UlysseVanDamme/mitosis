@@ -17,7 +17,7 @@ from .models import Agent, AgentScope, Claim, ClaimScope, Conflict, Document, Sp
 
 log = logging.getLogger("mitosis.swarm")
 
-DEFAULT_BUDGET = int(os.environ.get("MITOSIS_BUDGET", "7000"))
+DEFAULT_BUDGET = int(os.environ.get("MITOSIS_BUDGET", "1800"))
 CORPUS_DIR = Path(os.environ.get("MITOSIS_CORPUS", str(Path(__file__).resolve().parents[2] / "corpus")))
 EXTRACT_CONCURRENCY = 8
 CONFLICT_CONCURRENCY = 4
@@ -452,7 +452,8 @@ class Swarm:
             if not vis:
                 continue
             subjects = list(dict.fromkeys(c.subject for c in a.claims if c.doc_id in {d.doc_id for d in vis}))
-            profile = " | ".join([a.scope.description, *(d.title for d in vis), *{d.topic for d in vis},
+            anc = [self.agents[x].scope.description for x in self._ancestors(a.agent_id) if x in self.agents and x != "A0"]
+            profile = " | ".join([*anc, a.scope.description, *(d.title for d in vis), *{d.topic for d in vis},
                                   *{d.client for d in vis if d.client}, *subjects[:15]])
             infos.append({"agent_id": a.agent_id, "scope": a.scope.description, "owner": a.owner, "profile": profile})
         picks = await self.llm.route_query(question, infos) if infos else []

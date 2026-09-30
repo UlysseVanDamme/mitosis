@@ -26,7 +26,7 @@ cleanup() {
 trap cleanup INT TERM EXIT
 
 echo "[start] backend  -> logs/backend.log (port $BACKEND_PORT)"
-( cd "$ROOT/backend" && exec setsid uv run uvicorn mitosis.api:app --host 127.0.0.1 --port "$BACKEND_PORT" ) \
+( cd "$ROOT/backend" && exec setsid env -u PYTHONPATH uv run uvicorn mitosis.api:app --host 127.0.0.1 --port "$BACKEND_PORT" ) \
   > "$ROOT/logs/backend.log" 2>&1 &
 PIDS+=($!)
 
