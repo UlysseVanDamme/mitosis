@@ -1,5 +1,5 @@
 import { applyEvent, getState, onEvent, patch } from './store';
-import type { Agent, GoldenQuestion, MitosisEvent, Role, User } from './types';
+import type { Agent, AppNotification, GoldenQuestion, Handover, MitosisEvent, Role, User } from './types';
 import { MockEngine } from './mock/engine';
 
 const params = new URLSearchParams(location.search);
@@ -47,7 +47,8 @@ export const ROLE_LABEL: Record<Role, string> = {
 function setAuth(t: string | null, u: User | null) {
   token = t;
   if (!MOCK) { save(TOKEN_KEY, t); save(USER_KEY, u); }
-  patch({ auth: u, user: accessOf(u), view: u?.role === 'client' ? getState().view : 'lab' });
+  patch({ auth: u, user: accessOf(u), view: u?.role === 'client' ? getState().view : 'lab', notifications: [], phone: null });
+  if (u) void api.notifications().then((list) => patch({ notifications: list })).catch(() => {});
 }
 
 export function logout() {
@@ -189,6 +190,19 @@ export const api = {
   async agent(id: string): Promise<Agent | null> {
     if (mock) return mock.agent(id, getState().user) as Agent | null;
     const r = await authFetch(`/agents/${encodeURIComponent(id)}`);
+    return r.ok ? r.json() : null;
+  },
+  async notifications(): Promise<AppNotification[]> {
+    if (mock) return mock.notifications(getState().auth?.username ?? '');
+    const r = await authFetch('/notifications');
+    if (!r.ok) return [];
+    const j = await r.json();
+    const list = Array.isArray(j) ? j : j.notifications;
+    return Array.isArray(list) ? list : [];
+  },
+  async handover(): Promise<Handover | null> {
+    if (mock) return mock.handover(getState().auth?.username ?? '');
+    const r = await authFetch('/handover');
     return r.ok ? r.json() : null;
   },
   async golden(): Promise<GoldenQuestion[]> {

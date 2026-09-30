@@ -5,7 +5,9 @@ import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } f
 import type { Scene } from '../canvas/Scene';
 import { accessOf, api, knowsPasscode, login, MOCK } from '../api';
 import { getState, inboxOf, onEvent, patch, stats, useStore, type AppState, type QueryState } from '../store';
-import type { Agent, Conflict, Side } from '../types';
+import type { Agent, AppNotification, Conflict, Side } from '../types';
+import { HandoverList, useHandover } from './Inspector';
+import { runAction } from './Phone';
 import { UserSwitcher } from './Auth';
 import { assessmentFor, Ledger, toneOf } from './Trust';
 import { claimsOf, renderBold, winnerOf } from './util';
@@ -27,7 +29,8 @@ const niceDate = (d?: string | null) => {
 };
 
 // ---------- story beats (space bar) ----------
-const story = { armed: false, held: null as string | null, reask: false, heldSeen: false };
+const story = { armed: false, held: null as string | null, reask: false, heldSeen: false, step: 0, handover: false };
+const STEPS = ['message Jan Peeters', 'confirm as Jan', 'message Sofie', "Sofie's handover", 'ask as Sofie'];
 const holdListeners = new Set<() => void>();
 function setHeld(id: string | null) { story.held = id; holdListeners.forEach((l) => l()); }
 
@@ -80,6 +83,7 @@ export async function advance() {
   }
   if (s.ingesting) return;
   const q = s.activeQueryId ? s.queries.get(s.activeQueryId) : undefined;
+  if (!q && story.step < STEPS.length) { await phoneBeat(); return; }
   if (!q) { await askHandover(); return; }
   if (!q.answer) return;
   const open = q.answer.conflicts.map((c) => s.conflicts.get(c.conflict_id) ?? c).filter((c) => c.status === 'open');
@@ -92,11 +96,57 @@ export async function advance() {
   patch({ activeQueryId: null });
 }
 
+function heroOpen(s: AppState): Conflict | undefined {
+  const cs = [...s.conflicts.values()].filter((c) => c.hero);
+  return cs.find((c) => c.kind === 'forecast_vs_final' && c.status === 'open') ?? cs.find((c) => c.status === 'open') ?? cs[0];
+}
+
+/** Scenes 3/4: the right person gets a message on their phone. */
+async function phoneBeat() {
+  const step = story.step;
+  if (step === 0) {
+    if (!(await as('jan'))) return;
+    const list = await api.notifications().catch(() => [] as AppNotification[]);
+    const c = heroOpen(getState());
+    let n = list.find((x) => c && x.conflict_id === c.conflict_id) ?? list.find((x) => x.actions.some((a) => /confirm|verify/i.test(a.label + a.url)));
+    if (!n && c) {
+      const w = sidesOf(c, getState()).find((x) => x.wins);
+      n = { id: `local-${c.conflict_id}`, to: 'jan', to_name: 'Jan Peeters', channel: 'app', title: 'A contradiction needs your decision', text: c.plain_summary || c.summary, conflict_id: c.conflict_id, query_id: null, actions: w ? [{ label: `Confirm ${w.value}`, url: `verify:${c.conflict_id}` }] : [], ts: Date.now() / 1000, delivered_slack: false };
+    }
+    patch({ phone: n ?? null });
+  } else if (step === 1) {
+    const n = getState().phone;
+    const act = n?.actions.find((a) => /confirm|verify/i.test(a.label + a.url));
+    if (n && act) await runAction(n, act);
+    else { const c = heroOpen(getState()); if (c && c.status === 'open') await verifyCell(c.agent_id, [c.conflict_id]); }
+    patch({ phone: null });
+  } else if (step === 2) {
+    if (!(await as('sofie'))) return;
+    const list = await api.notifications().catch(() => [] as AppNotification[]);
+    let n = list.find((x) => /verif/i.test(x.title + x.text));
+    const c = [...getState().conflicts.values()].find((x) => x.hero && x.status === 'verified');
+    if (!n && c) {
+      const w = sidesOf(c, getState()).find((x) => x.wins);
+      n = { id: `local-v-${c.conflict_id}`, to: 'sofie', to_name: 'Sofie', channel: 'app', title: `Verified by ${c.verified_by ?? 'Jan Peeters'}`, text: `Your Van Dessel question is verified by ${c.verified_by ?? 'Jan Peeters'}: ${w?.value ?? c.resolution}.`, conflict_id: c.conflict_id, query_id: null, actions: [], ts: Date.now() / 1000, delivered_slack: false };
+    }
+    patch({ phone: n ?? null });
+  } else if (step === 3) {
+    patch({ phone: null });
+    story.handover = true;
+  } else {
+    story.handover = false;
+    await askHandover();
+  }
+  story.step = step + 1;
+  holdListeners.forEach((l) => l());
+}
+
 function nextBeat(s: AppState): string {
   if (story.held) return 'continue';
   if (!s.ingesting && !s.ingestDone && s.docsAbsorbed.size === 0) return 'start reading';
   if (s.ingesting) return '';
   const q = s.activeQueryId ? s.queries.get(s.activeQueryId) : undefined;
+  if (!q && story.step < STEPS.length) return STEPS[story.step];
   if (!q) return 'ask as Sofie';
   if (!q.answer) return '';
   if (q.answer.conflicts.some((c) => (s.conflicts.get(c.conflict_id) ?? c).status === 'open')) return 'verify as Jan Peeters';
@@ -134,12 +184,14 @@ export function Stage({ sceneRef }: { sceneRef: SceneRef }) {
   // Collect beats from the event stream.
   useEffect(() => onEvent((e, st) => {
     if (st.mode !== 'stage') return;
-    if (e.type === 'agent_split') {
+    if (e.type === 'agent_budded') {
+      setDivide({ text: `new branch: ${e.agent.scope.value || e.agent.scope.description}`, k: Date.now() });
+    } else if (e.type === 'agent_split') {
       setDivide({ text: `divided by ${PLAIN_DIM[e.split.dimension] ?? e.split.dimension}`, k: Date.now() });
     } else if (e.type === 'conflict_detected' && e.conflict.hero) {
       setQueue((q) => (q.includes(e.conflict.conflict_id) ? q : [...q, e.conflict.conflict_id]));
     } else if (e.type === 'reset' || (e.type === 'snapshot' && !e.keepLayout)) {
-      setQueue([]); setSpot(null); setHeld(null);
+      setQueue([]); setSpot(null); setHeld(null); story.step = 0; story.handover = false;
     }
   }), []);
   useEffect(() => { if (!divide) return; const t = setTimeout(() => setDivide(null), 3000); return () => clearTimeout(t); }, [divide]);
@@ -213,7 +265,8 @@ export function Stage({ sceneRef }: { sceneRef: SceneRef }) {
       </header>
       {divide && !spot && <div key={divide.k} className="st-divide">{divide.text}</div>}
       {spot && spotConflict && <Catch sceneRef={sceneRef} c={spotConflict} phase={spot.phase} held={story.held === spot.id} />}
-      {!spot && !q && <Owner sceneRef={sceneRef} />}
+      {!spot && !q && !story.handover && !s.phone && <Owner sceneRef={sceneRef} />}
+      {!q && story.handover && <StageHandover />}
       {q && <StageAnswer q={q} sceneRef={sceneRef} />}
       <div className="st-foot">
         {beat && <span><kbd>space</kbd> {beat}</span>}
@@ -408,6 +461,12 @@ function StageAnswer({ q, sceneRef }: { q: QueryState; sceneRef: SceneRef }) {
       <button className="st-x" aria-label="Close answer" onClick={() => patch({ activeQueryId: null })}>×</button>
     </section>
   );
+}
+
+function StageHandover() {
+  const h = useHandover();
+  if (!h || !h.items.length) return null;
+  return <section className="st-handover"><HandoverList h={h} /></section>;
 }
 
 function short(t: string) { const x = t.split(/[.;:(]/)[0]; return x.length > 60 ? x.slice(0, 58) + '…' : x; }

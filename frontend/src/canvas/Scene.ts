@@ -192,6 +192,17 @@ export class Scene {
         if (!this.nodes.has(e.agent.agent_id)) this.sync(s, true);
         break;
       }
+      case 'agent_budded': {
+        // A small cell grows out of its hub.
+        const p = this.nodes.get(e.parent_id);
+        const n = this.ensureNode(e.agent, p ? { x: (p.x ?? 0) + 6, y: (p.y ?? 0) + 6 } : undefined);
+        this.rebuildLinks(s);
+        const target = targetR2(e.agent, s.budget), t0 = now();
+        n.r = 3; n.fill = clamp(e.agent.tokens / s.budget, 0, 1.3); n.pulse = 1;
+        const grow = () => { const k = clamp((now() - t0) / 1400); n.r = 3 + (target - 3) * easeInOut(k); if (k < 1) requestAnimationFrame(grow); };
+        requestAnimationFrame(grow);
+        break;
+      }
       case 'query_started':
         this.queryLeaves.clear(); this.queryPath.clear(); this.queryDone.clear();
         break;

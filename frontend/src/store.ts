@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type {
-  Agent, Assessment, Citation, Claim, Conflict, Doc, Impact, MitosisEvent, RoutingStats, ServerState, Split, User, VerifiedFact,
+  Agent, AppNotification, Assessment, Citation, Claim, Conflict, Doc, Impact, MitosisEvent, RoutingStats, ServerState, Split, User, VerifiedFact,
 } from './types';
 
 export interface QueryState {
@@ -51,6 +51,12 @@ export interface AppState {
   loginFor: string | null; // username the login dialog is open for ('' = pick)
   mode: 'stage' | 'explore';
   impacts: Map<string, Impact>; // by conflict_id
+  // wave 4
+  notifications: AppNotification[]; // the logged-in user's own
+  phone: AppNotification | null; // the message currently shown on the phone mockup
+  selectedConflict: string | null;
+  hood: boolean; // "Under the hood" drawer open
+  bud: { id: string; topic: string; k: number } | null;
 }
 
 export const ZERO_ROUTING: RoutingStats = { rule: 0, s1: 0, s2: 0, s1_ms_avg: 0, s2_ms_avg: 0 };
@@ -65,6 +71,7 @@ function empty(): AppState {
     auth: null, routing: ZERO_ROUTING, redactions: 0, redactKinds: [], quarantined: [],
     lens: 'scope', view: 'lab', scrub: null, loginFor: null,
     mode: new URLSearchParams(location.search).get('mode') === 'explore' ? 'explore' : 'stage', impacts: new Map(),
+    notifications: [], phone: null, selectedConflict: new URLSearchParams(location.search).get('conflict'), hood: false, bud: null,
   };
 }
 
@@ -82,8 +89,6 @@ const listeners = new Set<() => void>();
 const eventListeners = new Set<(e: MitosisEvent, s: AppState) => void>();
 let logId = 0;
 let toastId = 0;
-let lastConflictToast = 0;
-const CONFLICT_KIND: Record<string, string> = { forecast_vs_final: 'Forecast vs final', temporal_supersession: 'Superseded', scope_difference: 'Scope difference', true_contradiction: 'Contradiction' };
 
 export function getState() { return state; }
 function emit() { version++; listeners.forEach((l) => l()); }
@@ -143,11 +148,11 @@ function bumpRouting(r: RoutingStats, router: string, ms: number): RoutingStats 
 }
 
 function keepUi(p: AppState) {
-  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view, mode: p.mode };
+  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view, mode: p.mode, notifications: p.notifications, hood: p.hood };
 }
 
 // ---------- time-lapse: every colony event since the last reset ----------
-const TIMELINE_TYPES = new Set(['snapshot', 'doc_queued', 'doc_routed', 'doc_absorbed', 'conflict_detected', 'split_started', 'agent_split', 'agent_updated', 'conflict_verified', 'ingest_done', 'routing_stats', 'doc_quarantined', 'doc_redacted', 'impact_detected']);
+const TIMELINE_TYPES = new Set(['snapshot', 'doc_queued', 'doc_routed', 'doc_absorbed', 'conflict_detected', 'split_started', 'agent_split', 'agent_updated', 'conflict_verified', 'ingest_done', 'routing_stats', 'doc_quarantined', 'doc_redacted', 'impact_detected', 'agent_budded']);
 let timeline: MitosisEvent[] = [];
 let silent = false;
 export function timelineLength() { return timeline.length; }
@@ -328,10 +333,13 @@ export function applyEvent(e: MitosisEvent, animate = false) {
       break;
     }
     case 'query_answer': {
-      const q = { ...query(s, e.query_id), answer: { answer: e.answer, citations: e.citations, conflicts: e.conflicts, trust: e.trust, owners: e.owners, leaves: e.leaves, assessment: e.assessment } };
+      const tr = typeof e.trust === 'number' ? null : e.trust;
+      const score = tr ? tr.score : (e.trust as number);
+      const assessment = e.assessment && tr ? { ...e.assessment, trust: { ...e.assessment.trust, score: tr.score, verdict: tr.verdict || e.assessment.trust.verdict, factors: tr.factors } } : e.assessment;
+      const q = { ...query(s, e.query_id), answer: { answer: e.answer, citations: e.citations, conflicts: e.conflicts, trust: score, owners: e.owners, leaves: e.leaves, assessment } };
       s.queries.set(e.query_id, q);
       if (!s.activeQueryId) s.activeQueryId = e.query_id;
-      log(s, e, `Answer ready, trust ${e.trust}`, 'ok');
+      log(s, e, `Answer ready, trust ${score}`, 'ok');
       break;
     }
     case 'baseline_answer': {
@@ -357,6 +365,26 @@ export function applyEvent(e: MitosisEvent, animate = false) {
       log(s, e, `Impact: ${e.summary}`, 'conflict');
       break;
     }
+    case 'agent_budded': {
+      s.claims = new Map(s.claims);
+      upsertAgent(s, e.agent);
+      const par = s.agents.get(e.parent_id);
+      if (par && !par.children.includes(e.agent.agent_id)) s.agents.set(e.parent_id, { ...par, children: [...par.children, e.agent.agent_id] });
+      s.splits = [...s.splits.filter((x) => x.split_id !== e.split.split_id), { ...e.split, kind: 'bud' }];
+      s.bud = { id: e.agent.agent_id, topic: e.agent.scope.value || e.agent.scope.description, k: Date.now() };
+      log(s, e, `${e.agent.agent_id} budded from ${e.parent_id}: new topic ${e.agent.scope.description}`, 'split');
+      break;
+    }
+    case 'notification': {
+      const n = ((e as unknown as { notification?: AppNotification }).notification ?? e) as AppNotification;
+      const me = s.auth?.username;
+      if (me && n.to && n.to !== me) break;
+      if (s.notifications.some((x) => x.id === n.id)) break;
+      s.notifications = [n, ...s.notifications].slice(0, 20);
+      s.phone = n;
+      log(s, e, `Message to ${n.to_name || n.to}: ${n.title}`, 'ok');
+      break;
+    }
     case 'ingest_done': {
       s.ingesting = false;
       s.ingestDone = true;
@@ -369,22 +397,6 @@ export function applyEvent(e: MitosisEvent, animate = false) {
   eventListeners.forEach((l) => l(e, state));
   emit();
 
-  if (state.mode === 'stage') return; // Stage mode: no toast stacks.
-  if (e.type === 'doc_quarantined') {
-    pushToast({ tone: 'quarantine', title: 'Quarantined', body: `${quarantineKind(e.reason)} in ${state.docs.get(e.doc_id)?.source || e.title}` });
-  }
-  if (e.type === 'conflict_detected' && !state.activeQueryId) {
-    // Throttle: a burst of conflicts should read as a pulse, not a wall. The headline kind always shows.
-    const t = Date.now();
-    if (e.conflict.kind === 'forecast_vs_final' || t - lastConflictToast > 2600) {
-      lastConflictToast = t;
-      pushToast({ tone: 'conflict', title: `${CONFLICT_KIND[e.conflict.kind] ?? 'Conflict'} · ${e.agent_id}`, body: e.conflict.summary });
-    }
-  }
-}
-
-function quarantineKind(reason: string) {
-  return /inject|instruction/i.test(reason) ? 'Prompt injection' : reason.split(/[.:]/)[0];
 }
 
 export function stats(s: AppState) {

@@ -32,8 +32,23 @@ export interface Expert { name: string; role: string; agent_id: string }
 export interface Assessment {
   reliable: Check; current: Check; applies: Check; gaps: Check;
   experts: Expert[];
-  trust: { score: number; verdict: 'trust' | 'verify first' | 'do not rely' | string; reason: string };
+  trust: { score: number; verdict: 'trust' | 'verify first' | 'do not rely' | string; reason: string; factors?: TrustFactor[] };
 }
+
+export interface TrustFactor { label: string; delta: number }
+export interface Trust { score: number; verdict: string; factors: TrustFactor[] }
+
+export interface AppNotification {
+  id: string; to: string; to_name: string; channel: 'slack' | 'app' | string;
+  title: string; text: string; conflict_id: string; query_id: string | null;
+  actions: { label: string; url: string }[]; ts: number; delivered_slack: boolean;
+}
+
+export interface HandoverItem {
+  conflict_id: string; plain_summary: string; sides: Side[];
+  impacts: string[] | Impact[] | string; owner: string; status: string;
+}
+export interface Handover { client: string; items: HandoverItem[] }
 
 export type Router = 'rule' | 's1' | 's2';
 export interface RoutingStats { rule: number; s1: number; s2: number; s1_ms_avg: number; s2_ms_avg: number }
@@ -79,6 +94,7 @@ export interface Split {
   reason: string;
   tokens_before: number;
   ts: number;
+  kind?: 'split' | 'bud' | string;
 }
 
 export type ConflictKind =
@@ -154,10 +170,12 @@ export type MitosisEvent =
   | { type: 'query_started'; ts: number; query_id: string; question: string; user: string }
   | { type: 'query_routed'; ts: number; query_id: string; path: string[]; leaves: string[]; confidences: Record<string, number>; router?: Router; margin?: number | null; ms?: number }
   | { type: 'leaf_answer'; ts: number; query_id: string; agent_id: string; answer: string; citations: string[] }
-  | { type: 'query_answer'; ts: number; query_id: string; answer: string; citations: Citation[]; conflicts: Conflict[]; trust: number; owners: string[]; leaves: string[]; assessment?: Assessment }
+  | { type: 'query_answer'; ts: number; query_id: string; answer: string; citations: Citation[]; conflicts: Conflict[]; trust: number | Trust; owners: string[]; leaves: string[]; assessment?: Assessment }
   | { type: 'baseline_answer'; ts: number; query_id: string; answer: string; retrieved: string[] }
   | { type: 'conflict_verified'; ts: number; conflict: Conflict; fact: VerifiedFact }
   | ({ type: 'impact_detected'; ts: number } & Impact)
+  | { type: 'agent_budded'; ts: number; parent_id: string; agent: Agent; split: Split }
+  | ({ type: 'notification'; ts: number } & Omit<AppNotification, 'ts'>)
   | { type: 'ingest_done'; ts: number; docs: number; agents: number; splits: number; conflicts: number };
 
 export interface GoldenQuestion {
