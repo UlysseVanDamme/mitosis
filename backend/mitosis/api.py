@@ -5,6 +5,7 @@ import asyncio
 import importlib
 import inspect
 import json
+import os
 import logging
 import uuid
 from pathlib import Path
@@ -26,7 +27,7 @@ log = logging.getLogger("mitosis.api")
 class IngestReq(BaseModel):
     corpus: Optional[str] = None
     doc_ids: Optional[list[str]] = None
-    delay_ms: int = 0
+    delay_ms: Optional[int] = None
 
 
 class QueryReq(BaseModel):
@@ -98,7 +99,11 @@ def create_app(swarm: Optional[Swarm] = None) -> FastAPI:
         if not docs:
             raise HTTPException(404, "corpus empty or not found")
         ids = [i for i in (req.doc_ids or order) if i in docs]
-        n = sw().enqueue([docs[i] for i in ids], delay_ms=req.delay_ms)
+        s = sw()
+        delay = req.delay_ms
+        if delay is None:  # UI button: pace fake runs so the splits are watchable
+            delay = int(os.environ.get("MITOSIS_DELAY_MS", "400" if getattr(s.llm, "is_fake", False) else "0"))
+        n = s.enqueue([docs[i] for i in ids], delay_ms=delay)
         return {"queued": n}
 
     @api.post("/query")

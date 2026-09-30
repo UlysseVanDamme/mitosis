@@ -31,8 +31,8 @@ export function QueryDock() {
       </form>
       <div className="chips">
         {golden.map((g) => (
-          <button key={g.question} className="chip" onClick={() => { setQ(g.question); void ask(g.question, g.user); }} title={g.question}>
-            {g.wow && <em>{g.wow}</em>}{g.question}
+          <button key={g.question} className="chip" onClick={() => { setQ(g.question); void ask(g.question, g.user); }} title={g.wow || g.question}>
+            {g.user && g.user !== 'consultant' && <em>{g.user.replace('client:', '')}</em>}{g.question}
           </button>
         ))}
       </div>
