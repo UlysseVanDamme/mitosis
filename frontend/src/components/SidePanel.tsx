@@ -108,7 +108,7 @@ function Empty({ title, body }: { title: string; body: string }) {
 
 export function Ticker() {
   const s = useStore((x) => x);
-  if (!s.recent.length) return null;
+  if (!s.recent.length || s.activeQueryId || !s.ingesting) return null;
   return (
     <div className="ticker" aria-live="polite">
       <div className="ticker-h">Reading</div>

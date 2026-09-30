@@ -324,15 +324,16 @@ export class Scene {
     }
     if (!isFinite(x0)) { x0 = -100; x1 = 100; y0 = -100; y1 = 100; }
     // Visible window: leave room for the ticker (top-left) and legend (bottom).
-    const top = 70, bottom = this.insetBottom ? 16 : 56;
+    const top = this.insetBottom ? 24 : 70, bottom = this.insetBottom ? 16 : 56;
     const vw = this.w - 60, vh = this.h - this.insetBottom - top - bottom;
-    const k = Math.min(vw / (x1 - x0), vh / (y1 - y0), 2.1);
+    const k = Math.min(vw / (x1 - x0), vh / (y1 - y0), 3);
     // Zoom out quickly (never clip), zoom in slowly.
-    this.cam.k += (k - this.cam.k) * (k < this.cam.k ? 0.09 : 0.03);
-    this.cam.x += ((x0 + x1) / 2 - this.cam.x) * 0.07;
+    const ease = (r: number) => 1 - Math.pow(1 - r, this.dt / 16.7);
+    this.cam.k += (k - this.cam.k) * ease(k < this.cam.k ? 0.09 : 0.03);
+    this.cam.x += ((x0 + x1) / 2 - this.cam.x) * ease(0.07);
     // Offset so the colony centres in the visible window, not the canvas.
     const shift = (top - bottom) / 2 / this.cam.k;
-    this.cam.y += ((y0 + y1) / 2 - shift - this.cam.y) * 0.07;
+    this.cam.y += ((y0 + y1) / 2 - shift - this.cam.y) * ease(0.07);
   }
 
   private nodePos(id: string): [number, number] | null {
