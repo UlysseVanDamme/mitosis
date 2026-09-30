@@ -9,6 +9,13 @@ Deliverables: 5-min video pitch, GitHub repo (private now, public at the end), A
 - O3 Time-lapse scrubber over the event log: replay the swarm growing from 1 cell to N.
 - O4 Cross-lingual conflicts: a French source vs a Dutch source on the same rule (Belgium is bilingual; plain RAG misses these).
 
+- O5 System 1 / System 2 routing (also T5). Layered router at every split node:
+  1. Rule: if the split dimension is a metadata field the doc/query has (pc, country, client), route deterministically.
+  2. System 1: each agent keeps a centroid (running mean of its docs' embeddings; children get centroids from their partition at split time). Cosine to each child centroid; if top1 - top2 margin >= MITOSIS_S1_MARGIN (tune, ~0.05), route in ms. Queries: fan out to every child within the margin of the top.
+  3. System 2: LLM router only when System 1 is unsure. Its decision is fed back into the chosen child's centroid (System 2 teaches System 1), so the System 1 share rises during ingest.
+  Embeddings: Gemini embedding API (multilingual NL/FR) when GEMINI_API_KEY is set; TF-IDF fallback in fake mode. Same embeddings pre-filter conflict candidates (high similarity, different value) before the LLM conflict check.
+  Events: doc_routed / query_routed gain `router: rule|s1|s2`, `margin`, `ms`. UI shows a live gauge "System 1: 84% of routes, 3 ms | System 2: 16%, 1.2 s" and colours routing particles by router. Eval reports S1 share, routing agreement with LLM-only routing, latency and LLM calls saved.
+
 ## Application to SD Worx (30%)
 - A1 Trust-check API: `POST /api/trust-check {question, draft_answer, sources}` returns conflicts, trust score, owner. Positions Mitosis as the trust layer under SD Worx's existing agents (Yuma, June 2026) rather than a competitor.
 - A2 mysdworx view: a client-HR-admin panel (neutral styling, no SD Worx logo) asking a question and getting the trusted answer with a badge, while access control hides other clients' data.
