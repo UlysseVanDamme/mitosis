@@ -571,7 +571,11 @@ class Swarm:
         return c
 
     def _side_line(self, c: Conflict) -> str:
-        return " vs ".join(f"{s['value']} ({s['source'] or s['title']}, {s['date'] or 'undated'})" for s in c.sides[:3])
+        # phone-sized: the winner against one distinct losing value
+        win = next((s for s in c.sides if s["wins"]), None)
+        lose = next((s for s in c.sides if s is not win and (not win or s["value"] != win["value"])), None)
+        pick = [x for x in (lose, win) if x] or c.sides[:2]
+        return " vs ".join(f"{s['value']} ({s['source'] or s['title']}, {s['date'] or 'undated'})" for s in pick)
 
     def _notify_owner(self, c: Conflict) -> None:
         a = self.agents.get(c.agent_id)
