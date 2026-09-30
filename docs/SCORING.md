@@ -55,3 +55,8 @@ Aikido's AI Code Audit reasons about business logic flaws, IDOR, authentication 
 - X1 Cross-agent check (makes "full context" true after splits): for every new claim, System 1 similarity over a global claim index pulls similar claims from ALL leaves into the conflict check, not only the receiving leaf. Event field `cross_agent: true` + UI arc between the two cells.
 - X2 Owner inbox: every open conflict is pushed to the owner of the holding cell; cell badge "3 to decide"; GET /api/inbox for the logged-in expert; toast "New conflict for Jan Peeters".
 - X3 Impact detection: when a conflict is resolved (auto or verified), find every claim/doc still relying on the losing value (client configs, open tickets, emails) and emit `impact_detected {conflict_id, losing_value, affected: [{doc_id, title, client, why}]}`. Planted case: Softwarehuis Delta config manual override 2.13% vs final 2.21%. UI alert card: "Forecast superseded -> 1 client config and 2 open tickets still use 2.13% -> fix before the payroll run".
+
+## Wave 4: routing table grows where it is unsure
+Today: centroids update on every node of the routed path (not only leaves), and a System 2 decision adds the value to that child's rule values. Gap: when System 1 is unsure and the LLM also finds no fit, the doc is forced into kids[-1].
+- B1 Budding: at a split node, if System 1 similarity to every child is below a floor AND the LLM answers "none fits", create a new child cell there with its own scope + owner; split-table row "S8 · budded from S3: new topic X"; event agent_budded.
+- B2 Re-divide (roadmap unless time): if a split node needed System 2 for >40% of its last 10 routes, re-plan that split and record the reason.
