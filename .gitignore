@@ -1,8 +1,16 @@
+# secrets
 .env
-node_modules/
-__pycache__/
-.venv/
-dist/
-*.pyc
+.env.*
+!.env.example
+*.pem
+*.key
+# runtime state (snapshots, event logs, audit log, generated passcodes, LLM cache)
 backend/state/
 logs/
+# build / deps
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
