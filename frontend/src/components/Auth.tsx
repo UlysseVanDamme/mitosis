@@ -123,6 +123,9 @@ export function UserSwitcher() {
               {u.username !== auth.username && !knowsPasscode(u.username) && <span className="lock" title="Passcode needed">passcode</span>}
             </button>
           ))}
+          {(auth.role === 'admin' || auth.role === 'expert') && (
+            <button role="menuitem" onClick={() => { setOpen(false); patch({ week: true }); }}><span>This week</span></button>
+          )}
           <button role="menuitem" className="signout" onClick={() => { setOpen(false); logout(); }}>Sign out</button>
         </div>
       )}

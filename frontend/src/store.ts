@@ -57,6 +57,7 @@ export interface AppState {
   selectedConflict: string | null;
   hood: boolean; // "Under the hood" drawer open
   bud: { id: string; topic: string; k: number } | null;
+  week: boolean; // "This week" buyer screen open
 }
 
 export const ZERO_ROUTING: RoutingStats = { rule: 0, s1: 0, s2: 0, s1_ms_avg: 0, s2_ms_avg: 0 };
@@ -72,6 +73,7 @@ function empty(): AppState {
     lens: 'scope', view: 'lab', scrub: null, loginFor: null,
     mode: new URLSearchParams(location.search).get('mode') === 'explore' ? 'explore' : 'stage', impacts: new Map(),
     notifications: [], phone: null, selectedConflict: new URLSearchParams(location.search).get('conflict'), hood: false, bud: null,
+    week: new URLSearchParams(location.search).get('week') === '1',
   };
 }
 
@@ -148,7 +150,7 @@ function bumpRouting(r: RoutingStats, router: string, ms: number): RoutingStats 
 }
 
 function keepUi(p: AppState) {
-  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view, mode: p.mode, notifications: p.notifications, hood: p.hood };
+  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view, mode: p.mode, notifications: p.notifications, hood: p.hood, week: p.week };
 }
 
 // ---------- time-lapse: every colony event since the last reset ----------

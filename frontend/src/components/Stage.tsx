@@ -29,7 +29,7 @@ const niceDate = (d?: string | null) => {
 };
 
 // ---------- story beats (space bar) ----------
-const story = { armed: false, held: null as string | null, reask: false, heldSeen: false, step: 0, handover: false };
+const story = { armed: false, held: null as string | null, reask: false, heldSeen: false, step: 0, handover: false, weekNext: false };
 const STEPS = ['message Jan Peeters', 'confirm as Jan', 'message Sofie', "Sofie's handover", 'ask as Sofie'];
 const holdListeners = new Set<() => void>();
 function setHeld(id: string | null) { story.held = id; holdListeners.forEach((l) => l()); }
@@ -83,7 +83,9 @@ export async function advance() {
   }
   if (s.ingesting) return;
   const q = s.activeQueryId ? s.queries.get(s.activeQueryId) : undefined;
+  if (s.week) { patch({ week: false }); return; }
   if (!q && story.step < STEPS.length) { await phoneBeat(); return; }
+  if (!q && story.weekNext) { story.weekNext = false; patch({ week: true }); return; }
   if (!q) { await askHandover(); return; }
   if (!q.answer) return;
   const open = q.answer.conflicts.map((c) => s.conflicts.get(c.conflict_id) ?? c).filter((c) => c.status === 'open');
@@ -93,6 +95,7 @@ export async function advance() {
     return;
   }
   if (story.reask) { story.reask = false; await askHandover(); return; }
+  story.weekNext = true; // final beat: the buyer's "This week" screen
   patch({ activeQueryId: null });
 }
 
@@ -146,7 +149,9 @@ function nextBeat(s: AppState): string {
   if (!s.ingesting && !s.ingestDone && s.docsAbsorbed.size === 0) return 'start reading';
   if (s.ingesting) return '';
   const q = s.activeQueryId ? s.queries.get(s.activeQueryId) : undefined;
+  if (s.week) return 'close this week';
   if (!q && story.step < STEPS.length) return STEPS[story.step];
+  if (!q && story.weekNext) return 'this week';
   if (!q) return 'ask as Sofie';
   if (!q.answer) return '';
   if (q.answer.conflicts.some((c) => (s.conflicts.get(c.conflict_id) ?? c).status === 'open')) return 'verify as Jan Peeters';
