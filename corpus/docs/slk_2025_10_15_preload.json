@@ -11,5 +11,9 @@
   "client": null,
   "topic": "indexation",
   "access_group": "internal",
-  "text": "#payroll-be, 15 Oct 2025\n\nTom Vandenberghe (consultant): Pro-Pay says PC 200 will be 2.13% in January. Shall we preload 2.13 for\nour PC 200 clients so the January run is ready? Delta already asked. I put it in Delta's config as an\noverride for now.\n\nLien Desmet (junior consultant): I can do the same for Mertens.\n\nJan Peeters (PC 200 owner): please don't. Inge is rewriting the indexation policy; from November we\nonly load final figures. Final PC 200 figure is published around 22 December. Tom, please remove the\nDelta override when the final comes out.\n\nTom Vandenberghe: ok, will do in December."
+  "text": "#payroll-be, 15 Oct 2025\n\nTom Vandenberghe (consultant): Pro-Pay says PC 200 will be 2.13% in January. Shall we preload 2.13 for\nour PC 200 clients so the January run is ready? Delta already asked. I put it in Delta's config as an\noverride for now.\n\nLien Desmet (junior consultant): I can do the same for Mertens.\n\nJan Peeters (PC 200 owner): please don't. Inge is rewriting the indexation policy; from November we\nonly load final figures. Final PC 200 figure is published around 22 December. Tom, please remove the\nDelta override when the final comes out.\n\nTom Vandenberghe: ok, will do in December.",
+  "owner": null,
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

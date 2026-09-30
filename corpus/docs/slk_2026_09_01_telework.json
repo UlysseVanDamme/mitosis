@@ -11,5 +11,9 @@
   "client": null,
   "topic": "telework allowance",
   "access_group": "internal",
-  "text": "#payroll-be, 1 Sep 2026\n\nInge Vermeulen: from today the maximum telework allowance is 164.21 euro per month (was 160.99 since\n1 March). Central parameter updated tonight. Policy page PAY-TW-03 will be updated next week.\n\nJan Peeters: Delta asked already (T-2026-0311), I'll close it once the run is done."
+  "text": "#payroll-be, 1 Sep 2026\n\nInge Vermeulen: from today the maximum telework allowance is 164.21 euro per month (was 160.99 since\n1 March). Central parameter updated tonight. Policy page PAY-TW-03 will be updated next week.\n\nJan Peeters: Delta asked already (T-2026-0311), I'll close it once the run is done.",
+  "owner": null,
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

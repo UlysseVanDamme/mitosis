@@ -11,5 +11,9 @@
   "client": null,
   "topic": "meal vouchers",
   "access_group": "internal",
-  "text": "#payroll-be, 2 Jan 2026\n\nTom Vandenberghe: FYI meal vouchers went to 10 euro on 1 January. The engine now sets the employer\nshare to 8.91 for all clients automatically, nothing to do on our side.\n\nLien Desmet: nice, so Van Dessel and Maes also get 8.91 from January?\n\nTom Vandenberghe: yes, every client is on 8.91 from January 2026."
+  "text": "#payroll-be, 2 Jan 2026\n\nTom Vandenberghe: FYI meal vouchers went to 10 euro on 1 January. The engine now sets the employer\nshare to 8.91 for all clients automatically, nothing to do on our side.\n\nLien Desmet: nice, so Van Dessel and Maes also get 8.91 from January?\n\nTom Vandenberghe: yes, every client is on 8.91 from January 2026.",
+  "owner": null,
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

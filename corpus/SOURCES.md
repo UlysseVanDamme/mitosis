@@ -60,3 +60,7 @@ temporal_supersession, 3 scope_difference incl. the Van Dessel client override, 
 each with the doc_ids involved and the expected winner. Decoys that agree with each other: PC 200 2.21%
 appears in 5 independent real sources plus internal Slack/newsletter; PC 302 2.189%, telework 164.21 and
 the LU June index each appear in both a real and an internal doc.
+
+## Wave 2 additions
+- `be_fr_pc200_index_2026`: French-language summary of the PC 200 2.21% figure (same figure as the Dutch releases above). URL points to the SD Worx French press landing page; the exact French release URL was not verified.
+- All other wave 7/8 docs (handover note, PRC-EOY-2019, Van Dessel Nederland BV, Teams chat, Dutch team note, injected Slack message, PII ticket) are fictional. The national register number and IBAN in `tkt_2026_0321_vandessel` are fictional test data (the IBAN is the standard documentation example).

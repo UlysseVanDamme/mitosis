@@ -11,5 +11,9 @@
   "client": null,
   "topic": "indexation",
   "access_group": "internal",
-  "text": "#payroll-be, 12 Jan 2026\n\nLotte Wouters: for the record, PC 330 was indexed by 2% in January 2026 (pivot index exceeded). AZ\nVlaskouter is correct. Please never give hospitals the PC 200 number."
+  "text": "#payroll-be, 12 Jan 2026\n\nLotte Wouters: for the record, PC 330 was indexed by 2% in January 2026 (pivot index exceeded). AZ\nVlaskouter is correct. Please never give hospitals the PC 200 number.",
+  "owner": null,
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

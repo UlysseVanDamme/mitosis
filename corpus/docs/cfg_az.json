@@ -11,5 +11,9 @@
   "client": "AZ Vlaskouter",
   "topic": "indexation",
   "access_group": "client:AZ Vlaskouter",
-  "text": "Payroll client config sheet. Client: AZ Vlaskouter, general hospital (client number BE-11873).\nJoint committee: PC 330 (about 1,150 employees). Salary scales: IFIC.\n\nIndexation: follows the public-sector pivot index; salaries and IFIC scales are indexed in the month\nafter the pivot index is exceeded. Night, weekend and irregular-hours premiums per hospital CAO.\nConsultant and PC 330 owner: Lotte Wouters. Contacts: Dr. Hilde Verstraete (HR director)."
+  "text": "Payroll client config sheet. Client: AZ Vlaskouter, general hospital (client number BE-11873).\nJoint committee: PC 330 (about 1,150 employees). Salary scales: IFIC.\n\nIndexation: follows the public-sector pivot index; salaries and IFIC scales are indexed in the month\nafter the pivot index is exceeded. Night, weekend and irregular-hours premiums per hospital CAO.\nConsultant and PC 330 owner: Lotte Wouters. Contacts: Dr. Hilde Verstraete (HR director).",
+  "owner": "Lotte Wouters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

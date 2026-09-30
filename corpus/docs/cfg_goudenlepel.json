@@ -11,5 +11,9 @@
   "client": "Restogroep De Gouden Lepel",
   "topic": "flexi-jobs",
   "access_group": "client:Restogroep De Gouden Lepel",
-  "text": "Payroll client config sheet. Client: Restogroep De Gouden Lepel BV (6 restaurants in Brugge and Gent,\nclient number BE-60415). Joint committee: PC 302.\n\n- 74 regular employees on hourly wages. Indexation 1 January (sector rule). Loaded value for\n  January 2026 on 20 Nov 2025: 2.1 (horeca desk estimate, to be replaced).\n- About 35 flexi-jobbers per month. Dimona per day. Flexi-wage cap as per sector rules.\n- Night supplement and work clothing compensation per PC 302.\nConsultant: Karim El Amrani. Contacts: Olivier Dujardin (operations)."
+  "text": "Payroll client config sheet. Client: Restogroep De Gouden Lepel BV (6 restaurants in Brugge and Gent,\nclient number BE-60415). Joint committee: PC 302.\n\n- 74 regular employees on hourly wages. Indexation 1 January (sector rule). Loaded value for\n  January 2026 on 20 Nov 2025: 2.1 (horeca desk estimate, to be replaced).\n- About 35 flexi-jobbers per month. Dimona per day. Flexi-wage cap as per sector rules.\n- Night supplement and work clothing compensation per PC 302.\nConsultant: Karim El Amrani. Contacts: Olivier Dujardin (operations).",
+  "owner": "Karim El Amrani",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

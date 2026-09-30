@@ -11,5 +11,9 @@
   "client": null,
   "topic": "indexation",
   "access_group": "internal",
-  "text": "#payroll-be, 23 Dec 2025\n\nKarim El Amrani: PC 302 final is 2.189% on 1 January 2026 (not the ~2.1% I estimated in November).\nNight supplement 1.6209 euro/hour, work clothing 2.20 euro/day. De Gouden Lepel still has my estimate\nloaded, I'll fix after the holidays."
+  "text": "#payroll-be, 23 Dec 2025\n\nKarim El Amrani: PC 302 final is 2.189% on 1 January 2026 (not the ~2.1% I estimated in November).\nNight supplement 1.6209 euro/hour, work clothing 2.20 euro/day. De Gouden Lepel still has my estimate\nloaded, I'll fix after the holidays.",
+  "owner": null,
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

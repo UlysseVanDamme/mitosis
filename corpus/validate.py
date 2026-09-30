@@ -9,10 +9,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 FIELDS = ["doc_id", "title", "source", "source_type", "url", "author", "date", "country", "pc",
-          "client", "topic", "access_group", "text"]
-SOURCE_TYPES = {"law", "official", "news", "forecast", "policy", "ticket", "slack", "cao", "email", "faq"}
+          "client", "topic", "access_group", "text", "owner", "language", "quarantined", "quarantine_reason"]
+SOURCE_TYPES = {"law", "official", "news", "forecast", "policy", "ticket", "slack", "cao", "email", "faq", "teams"}
 KINDS = {"temporal_supersession", "scope_difference", "true_contradiction", "forecast_vs_final"}
-GOLDEN_FIELDS = ["id", "question", "user", "expected_answer", "key_doc_ids", "why_plain_rag_fails", "wow"]
+GOLDEN_FIELDS = ["id", "question", "user", "login", "expected_answer", "key_doc_ids", "why_plain_rag_fails", "wow",
+                 "must_contain"]
+LANGUAGES = {"nl", "fr", "en", None}
+LOGINS = {"desk", "jan", "sofie", "vandessel", "guest"}
 errors = []
 
 
@@ -38,6 +41,12 @@ for f in sorted((HERE / "docs").glob("*.json")):
     for k in ["url", "pc", "client"]:
         if d.get(k) is not None and not isinstance(d.get(k), str):
             err(f"{did}: {k} must be string or null")
+    if d.get("owner") is not None and (not isinstance(d["owner"], str) or not d["owner"]):
+        err(f"{did}: owner must be a non-empty string or null")
+    if d.get("language") not in LANGUAGES:
+        err(f"{did}: bad language {d.get('language')}")
+    if d.get("quarantined") is not False or d.get("quarantine_reason") is not None:
+        err(f"{did}: corpus docs start unquarantined; the engine decides")
     if d.get("source_type") not in SOURCE_TYPES:
         err(f"{did}: bad source_type {d.get('source_type')}")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d.get("date", "")):
@@ -83,6 +92,16 @@ for g in golden:
     for did in g.get("key_doc_ids", []):
         if did not in docs:
             err(f"golden {g.get('id')}: unknown key_doc_id {did}")
+    if g.get("login") not in LOGINS:
+        err(f"golden {g.get('id')}: unknown login {g.get('login')}")
+    for grp in g.get("must_contain", []):
+        if not isinstance(grp, list) or not grp:
+            err(f"golden {g.get('id')}: must_contain groups must be non-empty lists")
+    for rx in g.get("must_not_contain", []):
+        try:
+            re.compile(rx)
+        except re.error as ex:
+            err(f"golden {g.get('id')}: bad regex {rx}: {ex}")
     user = g.get("user", "")
     if user.startswith("client:"):
         for did in g.get("key_doc_ids", []):
@@ -98,7 +117,22 @@ for p in planted:
         if did not in docs:
             err(f"planted {p.get('id')}: unknown doc {did}")
 
-print(f"docs: {len(docs)}  waves: {len(manifest['waves'])}  golden: {len(golden)}  planted conflicts: {len(planted)}")
+security = json.loads((HERE / "planted_security.json").read_text())
+for x in security:
+    d = docs.get(x.get("doc_id"))
+    if not d:
+        err(f"security {x.get('id')}: unknown doc {x.get('doc_id')}")
+    elif x.get("kind") == "pii":
+        for v in x.get("pii", []):
+            if v not in d["text"]:
+                err(f"security {x['id']}: PII sample {v!r} not in doc text")
+    elif x.get("kind") == "prompt_injection" and "ignore previous instructions" not in d["text"].lower():
+        err(f"security {x['id']}: injection text missing")
+
+print(f"docs: {len(docs)}  waves: {len(manifest['waves'])}  golden: {len(golden)}  planted conflicts: {len(planted)}  security plants: {len(security)}")
+print("owner:", {"ownerless": sum(1 for d in docs.values() if d["owner"] is None),
+                 "owned": sum(1 for d in docs.values() if d["owner"])},
+      " language:", {k: sum(1 for d in docs.values() if d["language"] == k) for k in ("nl", "fr", "en")})
 print("source_type:", {k: sum(1 for d in docs.values() if d['source_type'] == k) for k in sorted(SOURCE_TYPES)})
 print("access_group:", {k: sum(1 for d in docs.values() if d['access_group'] == k) for k in sorted({d['access_group'] for d in docs.values()})})
 print("est. tokens (len/4):", sum(len(d["text"]) for d in docs.values()) // 4)

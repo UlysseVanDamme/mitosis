@@ -1,0 +1,19 @@
+{
+  "doc_id": "prc_eoy_2019",
+  "title": "Procedure PRC-EOY-2019: year-end bonus run (shared drive)",
+  "source": "Shared drive /payroll/procedures",
+  "source_type": "policy",
+  "url": null,
+  "author": "unknown",
+  "date": "2019-11-04",
+  "country": "BE",
+  "pc": "PC 200",
+  "client": null,
+  "topic": "year-end bonus",
+  "access_group": "internal",
+  "text": "PRC-EOY-2019. Year-end bonus run for PC 200 clients. Last edited 4 November 2019 (author field\nempty, no owner listed).\n\n1. Take the December gross monthly salary of each employee with at least six months of seniority.\n2. Count the days actually worked in the reference year. Days of temporary unemployment (economic,\n   force majeure or weather) are never treated as worked days. Deduct them pro rata, every day.\n3. Check the result against last year's bonus; differences above 10% go to the team lead.\n4. The run is launched with the November payroll so that the bonus is paid before 20 December.\n\nQuestions: ask the PC 200 team.",
+  "owner": null,
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
+}

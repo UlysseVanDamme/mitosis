@@ -11,5 +11,9 @@
   "client": null,
   "topic": "meal vouchers",
   "access_group": "internal",
-  "text": "Policy PAY-MV-02, version 2 (valid from 1 January 2026). Replaces version 1.\n\n- Maximum face value of a meal voucher: 10 euro.\n- Maximum employer share: 8.91 euro (was 6.91 euro). Minimum employee share: 1.09 euro.\n- The increase is NOT automatic. A client may only raise the employer share when a sector CAO,\n  company CAO or (without union delegation) individual written agreements provide for it. The\n  consultant must have the signed document in the client file before changing the client config.\n- Clients that do nothing keep their existing voucher value.\n- Employer tax deduction of 4 euro per voucher only when the employer share is the full 8.91 euro."
+  "text": "Policy PAY-MV-02, version 2 (valid from 1 January 2026). Replaces version 1.\n\n- Maximum face value of a meal voucher: 10 euro.\n- Maximum employer share: 8.91 euro (was 6.91 euro). Minimum employee share: 1.09 euro.\n- The increase is NOT automatic. A client may only raise the employer share when a sector CAO,\n  company CAO or (without union delegation) individual written agreements provide for it. The\n  consultant must have the signed document in the client file before changing the client config.\n- Clients that do nothing keep their existing voucher value.\n- Employer tax deduction of 4 euro per voucher only when the employer share is the full 8.91 euro.",
+  "owner": "Inge Vermeulen",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

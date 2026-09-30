@@ -11,5 +11,9 @@
   "client": null,
   "topic": "year-end bonus",
   "access_group": "internal",
-  "text": "Policy PAY-EOY-05, version 2 (valid for year-end bonuses from 2026 on). Replaces version 1.\n\nYear-end bonus PC 200 = December gross monthly salary. Condition: six months of seniority. Pro rata\nfor incomplete years.\n\nChange: from 2026, 5 days of temporary unemployment are treated as worked days (gelijkgesteld) for\nthe calculation, in line with the PC 200 sector agreement 2025-2026. The December 2026 run must use\nthe new parameter. Owner: Jan Peeters."
+  "text": "Policy PAY-EOY-05, version 2 (valid for year-end bonuses from 2026 on). Replaces version 1.\n\nYear-end bonus PC 200 = December gross monthly salary. Condition: six months of seniority. Pro rata\nfor incomplete years.\n\nChange: from 2026, 5 days of temporary unemployment are treated as worked days (gelijkgesteld) for\nthe calculation, in line with the PC 200 sector agreement 2025-2026. The December 2026 run must use\nthe new parameter. Owner: Jan Peeters.",
+  "owner": "Jan Peeters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }
