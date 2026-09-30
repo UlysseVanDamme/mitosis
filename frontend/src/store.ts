@@ -57,6 +57,7 @@ export interface AppState {
   selectedConflict: string | null;
   hood: boolean; // "Under the hood" drawer open
   bud: { id: string; topic: string; k: number } | null;
+  week: boolean; // "This week" buyer screen open
 }
 
 export const ZERO_ROUTING: RoutingStats = { rule: 0, s1: 0, s2: 0, s1_ms_avg: 0, s2_ms_avg: 0 };
@@ -72,6 +73,7 @@ function empty(): AppState {
     lens: 'scope', view: 'lab', scrub: null, loginFor: null,
     mode: new URLSearchParams(location.search).get('mode') === 'explore' ? 'explore' : 'stage', impacts: new Map(),
     notifications: [], phone: null, selectedConflict: new URLSearchParams(location.search).get('conflict'), hood: false, bud: null,
+    week: new URLSearchParams(location.search).get('week') === '1',
   };
 }
 
@@ -148,7 +150,7 @@ function bumpRouting(r: RoutingStats, router: string, ms: number): RoutingStats 
 }
 
 function keepUi(p: AppState) {
-  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view, mode: p.mode, notifications: p.notifications, hood: p.hood };
+  return { connected: p.connected, user: p.user, auth: p.auth, lens: p.lens, view: p.view, mode: p.mode, notifications: p.notifications, hood: p.hood, week: p.week };
 }
 
 // ---------- time-lapse: every colony event since the last reset ----------
@@ -336,7 +338,7 @@ export function applyEvent(e: MitosisEvent, animate = false) {
       const tr = typeof e.trust === 'number' ? null : e.trust;
       const score = tr ? tr.score : (e.trust as number);
       const assessment = e.assessment && tr ? { ...e.assessment, trust: { ...e.assessment.trust, score: tr.score, verdict: tr.verdict || e.assessment.trust.verdict, factors: tr.factors } } : e.assessment;
-      const q = { ...query(s, e.query_id), answer: { answer: e.answer, citations: e.citations, conflicts: e.conflicts, trust: score, owners: e.owners, leaves: e.leaves, assessment } };
+      const q = { ...query(s, e.query_id), answer: { answer: e.answer ?? '', citations: e.citations ?? [], conflicts: e.conflicts ?? [], trust: score ?? 0, owners: e.owners ?? [], leaves: e.leaves ?? [], assessment } };
       s.queries.set(e.query_id, q);
       if (!s.activeQueryId) s.activeQueryId = e.query_id;
       log(s, e, `Answer ready, trust ${score}`, 'ok');

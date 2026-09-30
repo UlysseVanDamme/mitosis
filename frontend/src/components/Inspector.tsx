@@ -1,6 +1,6 @@
 // Explore mode (docs/STAGE_MODE.md, "Explore mode (inspector, not dashboard)"):
 // one right panel that shows the thing you just clicked; everything else is one click away.
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { dimLabel, getState, patch, useStore, type AppState, type QueryState } from '../store';
 import type { Conflict, GoldenQuestion, Handover, Side } from '../types';
@@ -8,6 +8,14 @@ import { verifyCell } from './Stage';
 import { assessmentFor, Ledger, toneOf } from './Trust';
 import { RoutingHud } from './Hud';
 import { claimsOf, fmtTime, renderBold, winnerOf } from './util';
+
+/** Keeps one malformed answer from blanking the whole Explore view. */
+class Safe extends Component<{ children: ReactNode }, { err: boolean }> {
+  state = { err: false };
+  static getDerivedStateFromError() { return { err: true }; }
+  componentDidCatch(e: unknown) { console.error('answer card', e); }
+  render() { return this.state.err ? <p className="muted">This answer could not be shown. Ask again.</p> : this.props.children; }
+}
 
 const TYPE: Record<string, string> = {
   official: 'official', law: 'law', news: 'news', forecast: 'forecast', policy: 'policy', ticket: 'ticket', slack: 'Slack',
@@ -42,7 +50,7 @@ export function Inspector() {
   const c = s.selectedConflict ? s.conflicts.get(s.selectedConflict) : undefined;
   const a = s.selectedAgent ? s.agents.get(s.selectedAgent) : undefined;
   let body: React.ReactNode;
-  if (q) body = <AnswerCard q={q} />;
+  if (q) body = <Safe key={q.query_id}><AnswerCard q={q} /></Safe>;
   else if (c) body = <ConflictView c={c} />;
   else if (a) body = <AgentView id={a.agent_id} />;
   else body = s.auth?.username === 'sofie' ? <HandoverView /> : <Attention />;
@@ -193,24 +201,24 @@ function AnswerCard({ q }: { q: QueryState }) {
   const hero = [...cs].sort((x, y) => Number(!!y.hero) - Number(!!x.hero) || Number(y.status !== 'auto_resolved') - Number(x.status !== 'auto_resolved'))[0];
   const hs = hero ? sidesOf(hero, s) : [];
   const lose = hs.some((x) => x.wins) ? hs.find((x) => !x.wins) : undefined;
-  const tt = as ? toneOf('trust', as.trust.verdict) : 'unk';
+  const tt = as?.trust ? toneOf('trust', as.trust.verdict) : 'unk';
   const checks = as ? [
-    ['Reliable', as.reliable.verdict, toneOf('reliable', as.reliable.verdict)],
-    ['Current', as.current.verdict, toneOf('current', as.current.verdict)],
-    ['Applies here', as.applies.verdict, toneOf('applies', as.applies.verdict)],
+    ['Reliable', as.reliable?.verdict ?? '', toneOf('reliable', as.reliable.verdict)],
+    ['Current', as.current?.verdict ?? '', toneOf('current', as.current.verdict)],
+    ['Applies here', as.applies?.verdict ?? '', toneOf('applies', as.applies.verdict)],
   ] as const : [];
   return (
     <>
       <div className="q">{q.question}</div>
       <p className="ans">{renderBold(headline(a.answer)).map((x) => (x.b ? <b key={x.i}>{x.t}</b> : <span key={x.i}>{x.t}</span>))}</p>
-      {as && (
+      {as?.trust && (
         <div className={`verdict t-${tt}`}>
           <b>{as.trust.verdict}</b> <span className="muted">{as.trust.score}/100</span>
           {!!as.trust.factors?.length && <div className="why-chips">{as.trust.factors.map((f) => <span key={f.label} className={f.delta >= 0 ? 'up' : 'down'}>{f.delta >= 0 ? '+' : ''}{f.delta} {f.label}</span>)}</div>}
         </div>
       )}
       <ul className="checks">
-        {checks.map(([l, v, t]) => <li key={l} className={`tk-${t}`}><i>{t === 'ok' ? '✓' : t === 'bad' ? '✕' : '!'}</i><b>{l}</b> {v.split(/[.;(]/)[0]}</li>)}
+        {checks.map(([l, v, t]) => <li key={l} className={`tk-${t}`}><i>{t === 'ok' ? '✓' : t === 'bad' ? '✕' : '!'}</i><b>{l}</b> {String(v ?? '').split(/[.;(]/)[0]}</li>)}
       </ul>
       {hero && <p className="warn">{lose ? <>Ignored <b>{lose.value}</b> ({TYPE[lose.source_type] ?? lose.source_type}, {lose.source}): {hero.plain_summary || hero.resolution}.</> : hero.plain_summary || hero.summary}</p>}
       {q.baseline && <p className="plain">Plain AI said: <s>{headline(q.baseline.answer)}</s></p>}

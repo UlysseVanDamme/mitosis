@@ -7,6 +7,7 @@ import { AskBar, Hood, Inspector } from './components/Inspector';
 import { Phone } from './components/Phone';
 import { Portal } from './components/Portal';
 import { Stage } from './components/Stage';
+import { Week } from './components/Week';
 
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -67,6 +68,7 @@ export function App() {
       {!stage && <AskBar />}
     </div>
     <Phone />
+    <Week />
     <Login />
     </>
   );
