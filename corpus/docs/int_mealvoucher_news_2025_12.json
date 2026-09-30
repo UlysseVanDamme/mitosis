@@ -11,5 +11,9 @@
   "client": null,
   "topic": "meal vouchers",
   "access_group": "internal",
-  "text": "Payroll Pulse #42. From 1 January 2026 the maximum meal voucher value becomes 10 euro, with a maximum\nemployer share of 8.91 euro (was 6.91 euro) and a minimum employee share of 1.09 euro.\n\nImportant for consultants: this is a maximum, not an automatic increase. A client can only raise the\nemployer share if this is laid down in a CAO (sector or company) or, where there is no union\ndelegation, in an individual written agreement with each employee. Do not change the voucher value of\na client without the signed agreement in the client file.\n\nThe tax deduction for the employer rises from 2 to 4 euro per voucher only if the employer pays the\nfull 8.91 euro."
+  "text": "Payroll Pulse #42. From 1 January 2026 the maximum meal voucher value becomes 10 euro, with a maximum\nemployer share of 8.91 euro (was 6.91 euro) and a minimum employee share of 1.09 euro.\n\nImportant for consultants: this is a maximum, not an automatic increase. A client can only raise the\nemployer share if this is laid down in a CAO (sector or company) or, where there is no union\ndelegation, in an individual written agreement with each employee. Do not change the voucher value of\na client without the signed agreement in the client file.\n\nThe tax deduction for the employer rises from 2 to 4 euro per voucher only if the employer pays the\nfull 8.91 euro.",
+  "owner": "Inge Vermeulen",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

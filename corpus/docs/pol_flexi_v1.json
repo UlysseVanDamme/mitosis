@@ -11,5 +11,9 @@
   "client": null,
   "topic": "flexi-jobs",
   "access_group": "internal",
-  "text": "Policy PAY-FLX-06 (valid from 1 July 2026).\n\n- Special employer contribution for flexi-jobs: 28%.\n- Flexi-wage at most 150% of the minimum base salary (mandatory allowances excluded from the test).\n- PC 302 (horeca): from 1 July 2026 a maximum flexi-wage of 21 euro per hour, subject to indexation.\n  Payroll must block flexi-wages above 21 euro/hour for PC 302 from the July 2026 payroll on.\n- Tax-free ceiling for non-pensioners in income year 2026: 18,440 euro. Warn the client when a\n  flexi-jobber approaches the ceiling.\n\nOwner: Karim El Amrani (horeca & flexi-jobs)."
+  "text": "Policy PAY-FLX-06 (valid from 1 July 2026).\n\n- Special employer contribution for flexi-jobs: 28%.\n- Flexi-wage at most 150% of the minimum base salary (mandatory allowances excluded from the test).\n- PC 302 (horeca): from 1 July 2026 a maximum flexi-wage of 21 euro per hour, subject to indexation.\n  Payroll must block flexi-wages above 21 euro/hour for PC 302 from the July 2026 payroll on.\n- Tax-free ceiling for non-pensioners in income year 2026: 18,440 euro. Warn the client when a\n  flexi-jobber approaches the ceiling.\n\nOwner: Karim El Amrani (horeca & flexi-jobs).",
+  "owner": "Karim El Amrani",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

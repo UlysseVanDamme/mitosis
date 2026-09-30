@@ -123,6 +123,24 @@
         "tkt_2026_0244_verhaeghe_lu",
         "eml_verhaeghe_lu_frontaliers"
       ]
+    },
+    {
+      "name": "7. Portfolio handover: Brouwerij Van Dessel",
+      "doc_ids": [
+        "hnd_vandessel_2026_09",
+        "prc_eoy_2019",
+        "nl_vandessel_13e_maand",
+        "teams_2026_09_24_vandessel",
+        "tkt_2026_0321_vandessel"
+      ]
+    },
+    {
+      "name": "8. Bilingual and hostile input",
+      "doc_ids": [
+        "int_nl_nota_index_2025_12",
+        "be_fr_pc200_index_2026",
+        "slk_2026_09_25_injection"
+      ]
     }
   ]
 }

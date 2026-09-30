@@ -11,5 +11,9 @@
   "client": "Softwarehuis Delta",
   "topic": "telework allowance",
   "access_group": "client:Softwarehuis Delta",
-  "text": "Ticket T-2026-0311. Client: Softwarehuis Delta BV. Status: OPEN.\n\nQuestion: \"Is the maximum telework allowance going up again? We want our September payslips right.\"\n\nAnswer draft: yes, from 1 September 2026 the maximum is 164.21 euro per month (was 160.99 euro from\n1 March 2026). Delta's config follows the central maximum, so September will use 164.21 once the\ncentral parameter is updated. Knowledge desk confirmation pending, because our policy page still says\n160.99."
+  "text": "Ticket T-2026-0311. Client: Softwarehuis Delta BV. Status: OPEN.\n\nQuestion: \"Is the maximum telework allowance going up again? We want our September payslips right.\"\n\nAnswer draft: yes, from 1 September 2026 the maximum is 164.21 euro per month (was 160.99 euro from\n1 March 2026). Delta's config follows the central maximum, so September will use 164.21 once the\ncentral parameter is updated. Knowledge desk confirmation pending, because our policy page still says\n160.99.",
+  "owner": "Jan Peeters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

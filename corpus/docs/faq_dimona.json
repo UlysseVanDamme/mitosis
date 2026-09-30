@@ -11,5 +11,9 @@
   "client": null,
   "topic": "dimona",
   "access_group": "internal",
-  "text": "Q: When must a Dimona be filed?\n\nA: The Dimona (immediate declaration of employment) must be filed with the national social security\noffice before the employee starts working. It is required for every employee, including students and\nflexi-jobbers, and for any change in the employment (end date, change of joint committee).\n\nFor flexi-jobbers and students the Dimona carries a specific employee type. For horeca clients with\noccasional workers, file per day or per period as agreed in the client config.\n\nConsultant checklist: never process a first payslip for an employee without a Dimona in-date.\nA missing Dimona is the most common cause of fines in horeca audits.\n\nOwner: Knowledge desk."
+  "text": "Q: When must a Dimona be filed?\n\nA: The Dimona (immediate declaration of employment) must be filed with the national social security\noffice before the employee starts working. It is required for every employee, including students and\nflexi-jobbers, and for any change in the employment (end date, change of joint committee).\n\nFor flexi-jobbers and students the Dimona carries a specific employee type. For horeca clients with\noccasional workers, file per day or per period as agreed in the client config.\n\nConsultant checklist: never process a first payslip for an employee without a Dimona in-date.\nA missing Dimona is the most common cause of fines in horeca audits.\n\nOwner: Knowledge desk.",
+  "owner": "Inge Vermeulen",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

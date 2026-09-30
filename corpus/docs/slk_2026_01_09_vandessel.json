@@ -11,5 +11,9 @@
   "client": null,
   "topic": "indexation",
   "access_group": "internal",
-  "text": "#payroll-be, 9 Jan 2026\n\nLien Desmet: why is Brouwerij Van Dessel complaining about the index? They got 2.21 like everyone.\n\nJan Peeters: Van Dessel has a company CAO (2019): the PC 200 index is applied on 1 February instead of\n1 January, and only on the base salary. The brouwerijpremie (145 euro/month) is indexed on its own, 2%\nevery 1 July. The CAO flag got lost in the engine migration. I'm handling ticket T-2026-0015."
+  "text": "#payroll-be, 9 Jan 2026\n\nLien Desmet: why is Brouwerij Van Dessel complaining about the index? They got 2.21 like everyone.\n\nJan Peeters: Van Dessel has a company CAO (2019): the PC 200 index is applied on 1 February instead of\n1 January, and only on the base salary. The brouwerijpremie (145 euro/month) is indexed on its own, 2%\nevery 1 July. The CAO flag got lost in the engine migration. I'm handling ticket T-2026-0015.",
+  "owner": null,
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

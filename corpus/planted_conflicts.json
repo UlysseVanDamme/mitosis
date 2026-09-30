@@ -175,5 +175,52 @@
       "nl_minimumloon_jul2026"
     ],
     "winner": "nl_minimumloon_jul2026 (from July)"
+  },
+  {
+    "id": "P18",
+    "kind": "temporal_supersession",
+    "note": "ownerless doc",
+    "summary": "Ownerless procedure PRC-EOY-2019 (temporary unemployment never equated) vs policy v2 / handover note (5 days equated from 2026)",
+    "doc_ids": [
+      "prc_eoy_2019",
+      "pol_eoy_v2",
+      "hnd_vandessel_2026_09"
+    ],
+    "winner": "pol_eoy_v2"
+  },
+  {
+    "id": "P19",
+    "kind": "true_contradiction",
+    "note": "Teams message",
+    "summary": "Teams chat: all 12 temporary unemployment days count vs policy v2 / handover note: 5 days",
+    "doc_ids": [
+      "teams_2026_09_24_vandessel",
+      "pol_eoy_v2",
+      "hnd_vandessel_2026_09"
+    ],
+    "winner": "hnd_vandessel_2026_09"
+  },
+  {
+    "id": "P20",
+    "kind": "scope_difference",
+    "note": "other country",
+    "summary": "Van Dessel Nederland BV (NL): no equated absence days, 13th month 8.33% vs Belgian PC 200 rule (5 days equated)",
+    "doc_ids": [
+      "nl_vandessel_13e_maand",
+      "hnd_vandessel_2026_09",
+      "pol_eoy_v2"
+    ],
+    "winner": "both, different country"
+  },
+  {
+    "id": "P21",
+    "kind": "forecast_vs_final",
+    "note": "cross-lingual (nl vs fr)",
+    "summary": "Dutch team note: PC 200 2,13% (forecast) vs French official release: 2,21 % final",
+    "doc_ids": [
+      "int_nl_nota_index_2025_12",
+      "be_fr_pc200_index_2026"
+    ],
+    "winner": "be_fr_pc200_index_2026"
   }
 ]

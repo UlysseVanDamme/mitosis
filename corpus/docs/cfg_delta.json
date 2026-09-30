@@ -11,5 +11,9 @@
   "client": "Softwarehuis Delta",
   "topic": "indexation",
   "access_group": "client:Softwarehuis Delta",
-  "text": "Payroll client config sheet. Client: Softwarehuis Delta BV, Gent (client number BE-51190). Joint\ncommittee: PC 200 (84 employees, mostly developers). Consultant: Tom Vandenberghe; PC 200 owner Jan\nPeeters.\n\nDeviations from sector defaults: none for indexation (sector rule, 1 January, effective salaries).\nManual override added 15 October 2025 by T. Vandenberghe: IDX_PC200_2026 = 2.13 (forecast, \"to be\nreplaced by final figure\").\n\nOther settings:\n- Meal vouchers: 8 euro (employer share 6.91 euro).\n- Telework allowance: maximum allowed amount (flag 'maximum', since April 2026).\n- Eco-cheques: paid in June via Pluxee card.\n- Contacts: Pieter Goossens (finance director), Sarah Lambrecht (HR)."
+  "text": "Payroll client config sheet. Client: Softwarehuis Delta BV, Gent (client number BE-51190). Joint\ncommittee: PC 200 (84 employees, mostly developers). Consultant: Tom Vandenberghe; PC 200 owner Jan\nPeeters.\n\nDeviations from sector defaults: none for indexation (sector rule, 1 January, effective salaries).\nManual override added 15 October 2025 by T. Vandenberghe: IDX_PC200_2026 = 2.13 (forecast, \"to be\nreplaced by final figure\").\n\nOther settings:\n- Meal vouchers: 8 euro (employer share 6.91 euro).\n- Telework allowance: maximum allowed amount (flag 'maximum', since April 2026).\n- Eco-cheques: paid in June via Pluxee card.\n- Contacts: Pieter Goossens (finance director), Sarah Lambrecht (HR).",
+  "owner": "Jan Peeters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

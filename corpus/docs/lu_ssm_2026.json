@@ -11,5 +11,9 @@
   "client": null,
   "topic": "minimum wage",
   "access_group": "public",
-  "text": "Luxembourg social minimum wage (salaire social minimum, SSM) from 1 June 2026, index 992.24:\n\n- Unqualified worker, 18 and over: 16.0192 euro gross per hour, 2,771.33 euro gross per month.\n- Qualified worker: 19.2231 euro per hour, 3,325.59 euro per month.\n- Young workers 17-18: 12.8154 euro per hour (2,217.06 euro per month); 15-17: 12.0144 euro per hour\n  (2,078.49 euro per month).\n\nThe amounts apply to residents and cross-border workers (frontaliers) alike.\n\n(Summary via search snippets of several Luxembourg sources.)"
+  "text": "Luxembourg social minimum wage (salaire social minimum, SSM) from 1 June 2026, index 992.24:\n\n- Unqualified worker, 18 and over: 16.0192 euro gross per hour, 2,771.33 euro gross per month.\n- Qualified worker: 19.2231 euro per hour, 3,325.59 euro per month.\n- Young workers 17-18: 12.8154 euro per hour (2,217.06 euro per month); 15-17: 12.0144 euro per hour\n  (2,078.49 euro per month).\n\nThe amounts apply to residents and cross-border workers (frontaliers) alike.\n\n(Summary via search snippets of several Luxembourg sources.)",
+  "owner": "Marc Schmit",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

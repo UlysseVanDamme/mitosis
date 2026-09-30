@@ -11,5 +11,9 @@
   "client": "Mertens Interieur",
   "topic": "indexation",
   "access_group": "client:Mertens Interieur",
-  "text": "Payroll client config sheet. Client: Mertens Interieur BV, Kortrijk (client number BE-38802). Joint\ncommittee: PC 200 (41 employees: designers, joiners and sales staff in the employee statute).\nConsultant: Lien Desmet; PC 200 owner Jan Peeters.\n\nDeviations: indexation follows the sector rule (1 January, effective salaries, no override).\nEco-cheques: converted into a cafeteria-plan budget of equivalent value by company CAO of 2024; skip\neco-cheque run. Year-end bonus: sector rule. Meal vouchers: 7 euro (employer share 5.91 euro).\nContacts: An Mertens (owner)."
+  "text": "Payroll client config sheet. Client: Mertens Interieur BV, Kortrijk (client number BE-38802). Joint\ncommittee: PC 200 (41 employees: designers, joiners and sales staff in the employee statute).\nConsultant: Lien Desmet; PC 200 owner Jan Peeters.\n\nDeviations: indexation follows the sector rule (1 January, effective salaries, no override).\nEco-cheques: converted into a cafeteria-plan budget of equivalent value by company CAO of 2024; skip\neco-cheque run. Year-end bonus: sector rule. Meal vouchers: 7 euro (employer share 5.91 euro).\nContacts: An Mertens (owner).",
+  "owner": "Jan Peeters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SourceType = Literal["law", "official", "news", "forecast", "policy", "ticket", "slack", "cao", "email", "faq"]
+SourceType = Literal["law", "official", "news", "forecast", "policy", "ticket", "slack", "cao", "email", "faq", "teams"]
 ConflictKind = Literal["temporal_supersession", "scope_difference", "true_contradiction", "forecast_vs_final"]
 
 
@@ -25,6 +25,10 @@ class Document(BaseModel):
     topic: str = ""
     access_group: str = "public"
     text: str = ""
+    owner: Optional[str] = None  # accountable person; None = ownerless
+    language: Optional[str] = None  # "nl" | "fr" | "en"
+    quarantined: bool = False
+    quarantine_reason: Optional[str] = None
 
     def meta(self) -> dict:
         return self.model_dump(exclude={"text"})

@@ -11,5 +11,9 @@
   "client": "AZ Vlaskouter",
   "topic": "indexation",
   "access_group": "client:AZ Vlaskouter",
-  "text": "Ticket T-2026-0024. Client: AZ Vlaskouter (hospital, PC 330, about 1,150 employees). Status: CLOSED.\n\nQuestion: \"Can you confirm the indexation percentage for our staff in January 2026? A newsletter\nmentioned 2.21%.\"\n\nAnswer (Lotte Wouters, PC 330 owner): for PC 330 (health care) the salaries are indexed by 2% in\nJanuary 2026, because the public-sector pivot index was exceeded. The 2.21% is the PC 200 figure and\ndoes not apply to your staff. IFIC scales are indexed by the same 2%. Payslips of January were\ncalculated correctly at 2%. Ticket closed."
+  "text": "Ticket T-2026-0024. Client: AZ Vlaskouter (hospital, PC 330, about 1,150 employees). Status: CLOSED.\n\nQuestion: \"Can you confirm the indexation percentage for our staff in January 2026? A newsletter\nmentioned 2.21%.\"\n\nAnswer (Lotte Wouters, PC 330 owner): for PC 330 (health care) the salaries are indexed by 2% in\nJanuary 2026, because the public-sector pivot index was exceeded. The 2.21% is the PC 200 figure and\ndoes not apply to your staff. IFIC scales are indexed by the same 2%. Payslips of January were\ncalculated correctly at 2%. Ticket closed.",
+  "owner": "Lotte Wouters",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

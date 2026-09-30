@@ -11,5 +11,9 @@
   "client": "Bouwgroep Maes",
   "topic": "indexation",
   "access_group": "client:Bouwgroep Maes",
-  "text": "Ticket T-2026-0021. Client: Bouwgroep Maes NV (PC 124 workers, PC 200 office staff). Status: OPEN.\nOpened by: Ruben Maes, managing director.\n\nIssue: \"Our 58 construction workers got a 2.21% raise on their January hourly wages. That seems very\nhigh for one quarter. Our federation says the January step for construction is much smaller.\"\n\nHelpdesk analysis: a consultant applied the PC 200 figure to all employees of the client, including the\nPC 124 workers. For PC 124 the quarterly indexation on 1 January 2026 is 0.21859%, applied to hourly\nwages and to the food and housing allowance. The 2.21% only applies to the 9 office employees in\nPC 200.\n\nNext step: recalculate the January wages of the PC 124 workers at 0.21859%. Recovery of overpaid wages\nto be discussed with the client. Assigned to: Sofie Claes (PC 124 owner)."
+  "text": "Ticket T-2026-0021. Client: Bouwgroep Maes NV (PC 124 workers, PC 200 office staff). Status: OPEN.\nOpened by: Ruben Maes, managing director.\n\nIssue: \"Our 58 construction workers got a 2.21% raise on their January hourly wages. That seems very\nhigh for one quarter. Our federation says the January step for construction is much smaller.\"\n\nHelpdesk analysis: a consultant applied the PC 200 figure to all employees of the client, including the\nPC 124 workers. For PC 124 the quarterly indexation on 1 January 2026 is 0.21859%, applied to hourly\nwages and to the food and housing allowance. The 2.21% only applies to the 9 office employees in\nPC 200.\n\nNext step: recalculate the January wages of the PC 124 workers at 0.21859%. Recovery of overpaid wages\nto be discussed with the client. Assigned to: Sofie Claes (PC 124 owner).",
+  "owner": "Sofie Claes",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }

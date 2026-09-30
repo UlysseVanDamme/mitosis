@@ -11,5 +11,9 @@
   "client": null,
   "topic": "telework allowance",
   "access_group": "internal",
-  "text": "Policy PAY-TW-03, version 2 (valid from 1 March 2026). Replaces version 1.\n\nMaximum flat-rate office allowance for structural telework: 160.99 euro per month (was 157.83 euro).\nSame conditions: equivalent of one working day per week, assessed per month. Clients paying the\nmaximum should be updated automatically by the central parameter; clients paying a fixed lower\namount are not changed.\n\nNext review: September 2026."
+  "text": "Policy PAY-TW-03, version 2 (valid from 1 March 2026). Replaces version 1.\n\nMaximum flat-rate office allowance for structural telework: 160.99 euro per month (was 157.83 euro).\nSame conditions: equivalent of one working day per week, assessed per month. Clients paying the\nmaximum should be updated automatically by the central parameter; clients paying a fixed lower\namount are not changed.\n\nNext review: September 2026.",
+  "owner": "Inge Vermeulen",
+  "language": "en",
+  "quarantined": false,
+  "quarantine_reason": null
 }
